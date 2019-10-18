@@ -2,12 +2,27 @@
 
 JavaScript LIB 是数数科技提供给客户, 用于采集 web 页面的用户行为数据的 SDK.
 
-### 使用手册
+本工程包含：
+1. ./src js SDK source code
+2. ./example 一个简单的demo
+3. ./thinkingdata_jslib_snippet.js 使用本SDK的代码片段
 
-ThinkingData 用户手册: 数据接入>接入指南>客户端SDK>JavaScript SDK 使用指南
+
+### 安装方法
+
+安装npm，并在此目录中执行以下命令：
 ```
-https://www.thinkingdata.cn/manual.html
+$npm install
+$npm run build
+$npm start
 ```
+之后可以打开浏览器，使用demo:
+```
+http://localhost:8080
+```
+当执行完 npm run build 后，会生成如下目录:
+1. ./build 包含打包后的原文件，包括: IIFE, AMD, CJS, ESM, UMD 等类型
+2. ./release 包含所有压缩后的文件，以及以 ThinkingDataJSLib_V1.X.X.zip 形式命名的待发布压缩包
 
 ### 部分功能使用说明
 
@@ -49,10 +64,10 @@ ta.initInstance('anotherInstance', param);
     !function (e) { if (!window.ThinkingDataAnalyticalTool) { var n = e.sdkUrl, t = e.name, r = window, a = document, i = "script", l = null, s = null; r.ThinkingDataAnalyticalTool = t; var o = ["track", "quick", "login", "identify", "logout", "trackLink", "userSet", "userSetOnce", "userAdd", "userDel", "setPageProperty", "setSuperProperties", "setDynamicSuperProperties", "clearSuperProperties", "timeEvent", "unsetSuperProperties", "initInstance"]; r[t] = function (e) { return function () { if (this.name) (r[t]._q = r[t]._q || []).push([e, arguments, this.name]); else if ("initInstance" === e) { var n = arguments[0]; r[t][n] = { name: n }; for (var a = 0; a < o.length; a++)r[t][n][o[a]] = r[t].call(r[t][n], o[a]); (r[t]._q1 = r[t]._q1 || []).push([e, arguments]) } else (r[t]._q = r[t]._q || []).push([e, arguments]) } }; for (var u = 0; u < o.length; u++)r[t][o[u]] = r[t].call(null, o[u]); r[t].param = e, r[t].__SV = 1.1, l = a.createElement(i), s = a.getElementsByTagName(i)[0], l.async = 1, l.src = n, s.parentNode.insertBefore(l, s) } }(
     {
 
-        appId: "YOUR APP ID",
+        appId: "b2a61feb9e56472c90c5bcb320dfb4ef",
         name: "ta",
-        sdkUrl: "./thinkingdata.min.js",
-        serverUrl: "RECEIVER SERVER URL",
+        sdkUrl: "./thinkingdata.js",
+        serverUrl: "https://sdk.tga.thinkinggame.cn/sync_js",
         loaded: function(ta) {
             var currentId = ta.getDistinctId();
             ta.identify(currentId + '_1');
