@@ -1,0 +1,19 @@
+{
+    "name": "thinkingdata-browser",
+    "version": "1.5.0",
+    "description": "The official ThinkingData JavaScript browser client library",
+    "scripts": {
+        "lint": "eslint ./src",
+        "build": "npm run lint; ./build.sh",
+        "start": "pushd example; python -m SimpleHTTPServer 8080; popd"
+    },
+    "license": "Apache-2.0",
+    "devDependencies": {
+        "@babel/core": "^7.5.4",
+        "@babel/preset-env": "^7.5.4",
+        "eslint": "^6.0.1",
+        "rollup": "^1.16.7",
+        "rollup-plugin-babel": "^4.3.3",
+        "rollup-plugin-replace": "^2.2.0"
+    }
+}

@@ -64,10 +64,10 @@ ta.initInstance('anotherInstance', param);
     !function (e) { if (!window.ThinkingDataAnalyticalTool) { var n = e.sdkUrl, t = e.name, r = window, a = document, i = "script", l = null, s = null; r.ThinkingDataAnalyticalTool = t; var o = ["track", "quick", "login", "identify", "logout", "trackLink", "userSet", "userSetOnce", "userAdd", "userDel", "setPageProperty", "setSuperProperties", "setDynamicSuperProperties", "clearSuperProperties", "timeEvent", "unsetSuperProperties", "initInstance"]; r[t] = function (e) { return function () { if (this.name) (r[t]._q = r[t]._q || []).push([e, arguments, this.name]); else if ("initInstance" === e) { var n = arguments[0]; r[t][n] = { name: n }; for (var a = 0; a < o.length; a++)r[t][n][o[a]] = r[t].call(r[t][n], o[a]); (r[t]._q1 = r[t]._q1 || []).push([e, arguments]) } else (r[t]._q = r[t]._q || []).push([e, arguments]) } }; for (var u = 0; u < o.length; u++)r[t][o[u]] = r[t].call(null, o[u]); r[t].param = e, r[t].__SV = 1.1, l = a.createElement(i), s = a.getElementsByTagName(i)[0], l.async = 1, l.src = n, s.parentNode.insertBefore(l, s) } }(
     {
 
-        appId: "b2a61feb9e56472c90c5bcb320dfb4ef",
+        appId: "22e445595b0f42bd8c5fe35bc44b88d6",
         name: "ta",
         sdkUrl: "./thinkingdata.js",
-        serverUrl: "https://sdk.tga.thinkinggame.cn/sync_js",
+        serverUrl: "https://receiver-ta-dev.thinkingdata.cn",
         loaded: function(ta) {
             var currentId = ta.getDistinctId();
             ta.identify(currentId + '_1');
