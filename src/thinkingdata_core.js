@@ -10,7 +10,7 @@ import {
 
 // eslint-disable-next-line no-unused-vars
 import Config from './config';
-import pageStayInit from './page_stay';
+// import pageStayInit from './page_stay';
 
 /** @const */
 var MASTER_INSTANCE_NAME = 'thinkingdata';
@@ -30,6 +30,7 @@ var DEFAULT_CONFIG = {
     dataSendTimeout: 3000,
     useAppTrack: false,
     strict: false, // invalid data will be post to server by default.
+    tryCount: 3,
 };
 
 /**
@@ -593,31 +594,32 @@ ThinkingDataAnalyticsLib.prototype._sendRequest = function (eventData, callback,
     }
 
     if (this._getConfig('send_method') === 'ajax') {
-        var xhr = null;
-        if (window.XMLHttpRequest) {
-            xhr = new XMLHttpRequest();
-        } else {
-            // eslint-disable-next-line no-undef
-            xhr = new ActiveXObject('Microsoft.XMLHTTP');
-        }
-        var serverUrl = this._getConfig('serverUrl');
-        xhr.open('post', serverUrl, true);
-        xhr.setRequestHeader('Content-type', 'application/x-www-form-urlencoded');
-        var _ta = this;
-        xhr.onreadystatechange = function () {
-            if (xhr.readyState === 4 && xhr.status === 200) {
-                callback && callback();
-                if (_ta._isDebug()) {
-                    var response = JSON.parse(xhr.response);
-                    if (response['errorLevel'] !== 0) {
-                        Log.w(response);
-                    } else {
-                        Log.i(response);
-                    }
-                }
-            }
-        };
-        xhr.send(urlData);
+        new AjaxTask(urlData, this._getConfig('serverUrl'), this._getConfig('tryCount'), callback, this._isDebug()).run();
+        // var xhr = null;
+        // if (window.XMLHttpRequest) {
+        //     xhr = new XMLHttpRequest();
+        // } else {
+        //     // eslint-disable-next-line no-undef
+        //     xhr = new ActiveXObject('Microsoft.XMLHTTP');
+        // }
+        // var serverUrl = this._getConfig('serverUrl');
+        // xhr.open('post', serverUrl, true);
+        // xhr.setRequestHeader('Content-type', 'application/x-www-form-urlencoded');
+        // var _ta = this;
+        // xhr.onreadystatechange = function () {
+        //     if (xhr.readyState === 4 && xhr.status === 200) {
+        //         callback && callback();
+        //         if (_ta._isDebug()) {
+        //             var response = JSON.parse(xhr.response);
+        //             if (response['errorLevel'] !== 0) {
+        //                 Log.w(response);
+        //             } else {
+        //                 Log.i(response);
+        //             }
+        //         }
+        //     }
+        // };
+        // xhr.send(urlData);
         /*
         setTimeout(function () {
             xhr.abort();
@@ -627,6 +629,51 @@ ThinkingDataAnalyticsLib.prototype._sendRequest = function (eventData, callback,
         this._sendRequestWithImage(urlData, callback);
     }
 };
+
+class AjaxTask {
+    constructor(data, serverUrl, tryCount, callback, isDebug) {
+        this.data = data;
+        this.serverUrl = serverUrl;
+        this.tryCount = tryCount ? tryCount : 3;
+        this.callback = callback;
+        this.isDebug = isDebug;
+    }
+    run() {
+        var xhr = null;
+        if (window.XMLHttpRequest) {
+            xhr = new XMLHttpRequest();
+        } else {
+            // eslint-disable-next-line no-undef
+            xhr = new ActiveXObject('Microsoft.XMLHTTP');
+        }
+        xhr.open('post', this.serverUrl, true);
+        xhr.setRequestHeader('Content-type', 'application/x-www-form-urlencoded');
+        var task = this;
+        xhr.onreadystatechange = function () {
+            if (xhr.readyState === 4) {
+                if ((xhr.status >= 200 && xhr.status < 300) || xhr.status === 304) {
+                    task.callback && task.callback();
+                    if (task.isDebug) {
+                        var response = JSON.parse(xhr.response);
+                        if (response['errorLevel'] !== 0) {
+                            Log.w(response);
+                        } else {
+                            Log.i(response);
+                        }
+                    }
+                } else {
+                    task.onFailed();
+                }
+            }
+        };
+        xhr.send(this.data);
+    }
+    onFailed() {
+        if (--this.tryCount > 0) {
+            this.run();
+        }
+    }
+}
 
 ThinkingDataAnalyticsLib.prototype._isDebug = function () {
     return this._getConfig('mode') === 'debug' || this._getConfig('mode') === 'debug_only';
@@ -668,6 +715,15 @@ ThinkingDataAnalyticsLib.prototype._sendRequestWithImage = function (data, callb
  */
 ThinkingDataAnalyticsLib.prototype.track = function (eventName, eventProperties, eventTime, callback) {
     if (!this._isCollectData()) {
+        return;
+    }
+    if (eventName === 'ta_page_show' || eventName === 'ta_page_hide') {
+        this._sendRequest({
+            type: 'track',
+            event: eventName,
+            time: _.check.isDate(eventTime) ? eventTime : new Date(),
+            properties: eventProperties
+        }, callback);
         return;
     }
     if ((PropertyChecker.event(eventName) && PropertyChecker.properties(eventProperties)) || !this._getConfig('strict')) {
@@ -781,6 +837,15 @@ ThinkingDataAnalyticsLib.prototype.trackFirstEvent = function (taEvent) {
  * 发送事件，会用 sendBeacon 的方式先尝试上报一次，然后再用系统配置方式上报
  */
 ThinkingDataAnalyticsLib.prototype.trackWithBeacon = function (eventName, eventProperties, eventTime, callback) {
+    if (eventName === 'ta_page_hide') {
+        this._sendRequest({
+            type: 'track',
+            event: eventName,
+            time: _.check.isDate(eventTime) ? eventTime : new Date(),
+            properties: eventProperties
+        }, callback, true);
+        return;
+    }
     if ((PropertyChecker.event(eventName) && PropertyChecker.properties(eventProperties)) || !this._getConfig('strict')) {
         this._sendRequest({
             type: 'track',
@@ -960,7 +1025,7 @@ ThinkingDataAnalyticsLib.prototype.init = function (param) {
                 send_method: 'image'
             });
         }
-        pageStayInit(this._getConfig('autoTrackEvent'), this._getConfig('name'));
+        new PageLifeCycle(this, this._getConfig('autoTrack')).start();
         if (this._isDebug()) {
             this._setConfig({
                 serverUrl: _.url('basic', param.serverUrl) + '/data_debug'
@@ -974,6 +1039,76 @@ ThinkingDataAnalyticsLib.prototype.init = function (param) {
         Log.i('The ThinkingData libraray has been initialized.');
     }
 };
+
+class PageLifeCycle {
+
+    constructor(taLib, config) {
+        this.taLib = taLib;
+        if (_.paramType(config) === 'Object' && _.paramType(config.pageShow) === 'Boolean') {
+            this.autoPageShow = config.pageShow;
+        } else {
+            this.autoPageShow = false;
+        }
+        if (_.paramType(config) === 'Object' && _.paramType(config.pageHide) === 'Boolean') {
+            this.autoPageHide = config.pageHide;
+        } else {
+            this.autoPageHide = false;
+        }
+    }
+
+    start() {
+        var page = this;
+        if ('onpageShow' in window) {
+            _.addEvent(window, 'pageShow', function () {
+                page.trackPageShowEvent();
+            });
+            _.addEvent(window, 'pagehide', function () {
+                //page.trackPageHideEventOnClose();
+            });
+        } else {
+            _.addEvent(window, 'load', function () {
+                page.trackPageShowEvent();
+            });
+            _.addEvent(window, 'beforeunload', function () {
+                //page.trackPageHideEventOnClose();
+            });
+        }
+
+        if ('onvisibilitychange' in document) {
+            _.addEvent(document, 'visibilitychange', function () {
+                if (document.hidden) {
+                    //页面隐藏 发送ta_page_hide
+                    page.trackPageHideEvent();
+                } else {
+                    //页面展示 发送ta_page_show
+                    page.trackPageShowEvent();
+                }
+            });
+        }
+
+    }
+
+    trackPageShowEvent() {
+        if (this.autoPageShow) {
+            this.taLib.track('ta_page_show', _.info.pageProperties());
+        }
+        this.taLib.timeEvent('ta_page_hide');
+    }
+
+    trackPageHideEvent() {
+        if (this.autoPageHide) {
+            this.taLib.trackWithBeacon('ta_page_hide', _.info.pageProperties());
+        }
+    }
+
+    trackPageHideEventOnClose() {
+        //如果页面隐藏的时候，发送了ta_page_hide，此时关闭不需要发送
+        if (this.autoPageHide && this.isPageShow) {
+            this.taLib.trackWithBeacon('ta_page_hide', _.info.pageProperties());
+        }
+    }
+
+}
 
 /**
  * 创建新的实例(只允许在 master instance 下调用).
