@@ -10,6 +10,7 @@ var slice = ArrayProto.slice;
 var toString = ObjProto.toString;
 var hasOwnProperty = ObjProto.hasOwnProperty;
 var nativeForEach = ArrayProto.forEach; var breaker = {};
+var utmTypes = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term'];
 
 var _ = {};
 
@@ -737,6 +738,9 @@ _.info = {
             '#screen_width': screen.width,
             '#browser': browserInfo.type,
             '#browser_version': browserInfo.version,
+            '#system_language': _.check.isString(navigator.languages[1]) ? navigator.languages[1].toLowerCase() : '取值异常',
+            '#ua': _.check.isString(navigator.userAgent) ? navigator.userAgent.toLowerCase() : '取值异常',
+            '#utm': _.getUtm()
         });
     },
     pageProperties: function () {
@@ -748,6 +752,30 @@ _.info = {
             '#url_path': location.pathname,
             '#title': document.title
         });
+    }
+};
+
+_.getUtm = function () {
+    var params = {};
+    _.each(utmTypes, function (kwkey) {
+        var kw = _.getQueryParam(location.href, kwkey);
+        if (kw.length) {
+            params[kwkey] = kw;
+        }
+    });
+    return JSON.stringify(params);
+};
+
+_.getQueryParam = function (url, key) {
+    key = key.replace(/[\[]/, '\\[').replace(/[\]]/, '\\]');
+    url = _.decodeURIComponent(url);
+    var regexS = '[\\?&]' + key + '=([^&#]*)',
+        regex = new RegExp(regexS),
+        results = regex.exec(url);
+    if (results === null || (results && typeof results[1] !== 'string' && results[1].length)) {
+        return '';
+    } else {
+        return _.decodeURIComponent(results[1]);
     }
 };
 
@@ -830,6 +858,292 @@ _.addEvent = function (el, type, fn, useCapture) {
     }
 };
 
+_.getRandom = function () {
+    var today = new Date();
+    var seed = today.getTime();
+    var num = Math.floor(Math.random() * 1000000);
+    return seed + '_' + num;
+};
+_.safeJSONParse = function (str) {
+    var val = null;
+    try {
+        val = JSON.parse(str);
+    } catch (e) {
+        return str;
+    }
+    return val;
+};
+_.saveObjectVal = function (name, value) {
+    if (!_.check.isString(value)) {
+        value = JSON.stringify(value);
+    }
+    _.localStorage.set(name, value);
+};
+_.readObjectVal = function (name) {
+    var value = _.localStorage.get(name);
+    if (!value) return null;
+    return _.safeJSONParse(value);
+};
+
+_.indexOf = function (arr, target) {
+    var indexof = arr.indexOf;
+    if (indexof) {
+        return indexof.call(arr, target);
+    } else {
+        for (var i = 0; i < arr.length; i++) {
+            if (target === arr[i]) {
+                return i;
+            }
+        }
+        return -1;
+    }
+};
+
+_.hasEncrypty = function (obj) {
+    if (_.check.isObject()) {
+        return obj.pkv !== 'undefined' && obj.ekey !== 'undefined' && obj.payload !== 'undefined';
+    }
+    return false;
+};
+
+_.addSiteEvent = function (target, eventName, eventHandler, useCapture) {
+    function fixEvent(event) {
+        if (event) {
+            event.preventDefault = fixEvent.preventDefault;
+            event.stopPropagation = fixEvent.stopPropagation;
+            event._getPath = fixEvent._getPath;
+        }
+        return event;
+    }
+    fixEvent._getPath = function () {
+        var ev = this;
+        return this.path || (this.composedPath && this.composedPath()) || ry(ev.target).getParents();
+    };
+
+    function ry(dom) {
+        return new DomElementInfo(dom);
+    }
+
+    var DomElementInfo = function (dom) {
+        this.ele = dom;
+    };
+
+    fixEvent.preventDefault = function () {
+        this.returnValue = false;
+    };
+    fixEvent.stopPropagation = function () {
+        this.cancelBubble = true;
+    };
+
+    var registerEvent = function (element, type, handler) {
+        if (useCapture === undefined && type === 'click') {
+            useCapture = true;
+        }
+        if (element && element.addEventListener) {
+            element.addEventListener(
+                type,
+                function (e) {
+                    e._getPath = fixEvent._getPath;
+                    handler.call(this, e);
+                },
+                useCapture
+            );
+        } else {
+            var ontype = 'on' + type;
+            var oldHandler = element[ontype];
+            element[ontype] = makeHandler(element, handler, oldHandler, type);
+        }
+    };
+
+    function makeHandler(element, newHandler, oldHandlers, type) {
+        var handler = function (event) {
+            event = event || fixEvent(window.event);
+            if (!event) {
+                return undefined;
+            }
+            event.target = event.srcElement;
+
+            var ret = true;
+            var oldResult, newResult;
+            if (typeof oldHandlers === 'function') {
+                oldResult = oldHandlers(event);
+            }
+            newResult = newHandler.call(element, event);
+            if (type !== 'beforeunload') {
+                if (false === oldResult || false === newResult) {
+                    ret = false;
+                }
+                return ret;
+            }
+        };
+        return handler;
+    }
+    registerEvent.apply(null, arguments);
+};
+
+_.getURLSearchParams = function (queryString) {
+    queryString = queryString || '';
+    var args = {};
+    var query = queryString.substring(1);
+    var pairs = query.split('&');
+    for (var i = 0; i < pairs.length; i++) {
+        var pos = pairs[i].indexOf('=');
+        if (pos === -1) continue;
+        var name = pairs[i].substring(0, pos);
+        var value = pairs[i].substring(pos + 1);
+        name = _.decodeURIComponent(name);
+        value = _.decodeURIComponent(value);
+        args[name] = value;
+    }
+    return args;
+};
+_.urlParse = function (url) {
+    var URLParser = function (url) {
+        this._fields = {
+            Username: 4,
+            Password: 5,
+            Port: 7,
+            Protocol: 2,
+            Host: 6,
+            Path: 8,
+            URL: 0,
+            QueryString: 9,
+            Fragment: 10
+        };
+        this._values = {};
+        this._regex = /^((\w+):\/\/)?((\w+):?(\w+)?@)?([^\/\?:]+):?(\d+)?(\/?[^\?#]+)?\??([^#]+)?#?(\w*)/;
+
+        if (typeof url !== 'undefined') {
+            this._parse(url);
+        }
+    };
+
+    URLParser.prototype.setUrl = function (url) {
+        this._parse(url);
+    };
+
+    URLParser.prototype._initValues = function () {
+        for (var a in this._fields) {
+            this._values[a] = '';
+        }
+    };
+
+    URLParser.prototype.addQueryString = function (queryObj) {
+        if (typeof queryObj !== 'object') {
+            return false;
+        }
+        var query = this._values.QueryString || '';
+        for (var i in queryObj) {
+            if (new RegExp(i + '[^&]+').test(query)) {
+                query = query.replace(new RegExp(i + '[^&]+'), i + '=' + queryObj[i]);
+            } else {
+                if (query.slice(-1) === '&') {
+                    query = query + i + '=' + queryObj[i];
+                } else {
+                    if (query === '') {
+                        query = i + '=' + queryObj[i];
+                    } else {
+                        query = query + '&' + i + '=' + queryObj[i];
+                    }
+                }
+            }
+        }
+        this._values.QueryString = query;
+    };
+
+    URLParser.prototype.getUrl = function () {
+        var url = '';
+        url += this._values.Origin;
+        url += this._values.Port ? ':' + this._values.Port : '';
+        url += this._values.Path;
+        url += this._values.QueryString ? '?' + this._values.QueryString : '';
+        url += this._values.Fragment ? '#' + this._values.Fragment : '';
+        return url;
+    };
+
+    URLParser.prototype._parse = function (url) {
+        this._initValues();
+
+        var b = this._regex.exec(url);
+        if (!b) {
+            Log.i('URLParser::_parse -> Invalid URL');
+        }
+
+        var urlTmp = url.split('#');
+        var urlPart = urlTmp[0];
+        var hashPart = urlTmp.slice(1).join('#');
+        b = this._regex.exec(urlPart);
+        for (var c in this._fields) {
+            if (typeof b[this._fields[c]] !== 'undefined') {
+                this._values[c] = b[this._fields[c]];
+            }
+        }
+        this._values['Hostname'] = this._values['Host'].replace(/:\d+$/, '');
+        this._values['Origin'] = this._values['Protocol'] + '://' + this._values['Hostname'];
+        this._values['Fragment'] = hashPart;
+    };
+
+    return new URLParser(url);
+};
+_.trim = function (str) {
+    return str.replace(/^[\s\uFEFF\xA0]+|[\s\uFEFF\xA0]+$/g, '');
+};
+_.URL = function (url) {
+    var result = {};
+    var isURLAPIWorking = function () {
+        var url;
+        try {
+            url = new URL('http://modernizr.com/');
+            return url.href === 'http://modernizr.com/';
+        } catch (e) {
+            return false;
+        }
+    };
+    if (typeof window.URL === 'function' && isURLAPIWorking()) {
+        result = new URL(url);
+        if (!result.searchParams) {
+            result.searchParams = (function () {
+                var params = _.getURLSearchParams(result.search);
+                return {
+                    get: function (searchParam) {
+                        return params[searchParam];
+                    }
+                };
+            })();
+        }
+    } else {
+        if (!_.check.isString(url)) {
+            url = String(url);
+        }
+        url = _.trim(url);
+        var _regex = /^https?:\/\/.+/;
+        if (_regex.test(url) === false) {
+            Log.w('Invalid URL');
+            return;
+        }
+        var instance = _.urlParse(url);
+        result.hash = instance._values.Fragment;
+        result.host = instance._values.Host ? instance._values.Host + (instance._values.Port ? ':' + instance._values.Port : '') : '';
+        result.href = instance._values.URL;
+        result.password = instance._values.Password;
+        result.pathname = instance._values.Path;
+        result.port = instance._values.Port;
+        result.search = instance._values.QueryString ? '?' + instance._values.QueryString : '';
+        result.username = instance._values.Username;
+        result.hostname = instance._values.Hostname;
+        result.protocol = instance._values.Protocol ? instance._values.Protocol + ':' : '';
+        result.origin = instance._values.Origin ? instance._values.Origin + (instance._values.Port ? ':' + instance._values.Port : '') : '';
+        result.searchParams = (function () {
+            var params = _.getURLSearchParams('?' + instance._values.QueryString);
+            return {
+                get: function (searchParam) {
+                    return params[searchParam];
+                }
+            };
+        })();
+    }
+    return result;
+};
 class Log {
     static i() {
         if (!this.showLog) {

@@ -1,107 +1,109 @@
 <html>
+
 <head>
     <meta charset="UTF-8">
     <!-- <meta http-equiv="refresh"content="5;url=1.html"/> -->
     <title>Test</title>
     <!--Thinking Analytics SDK BEGIN-->
     <script>
-!function(e){if(!window.ThinkingDataAnalyticalTool){var n=e.sdkUrl,t=e.name,r=window,a=document,i="script",l=null,s=null;r.ThinkingDataAnalyticalTool=t;var o=["track","quick","login","identify","logout","trackLink","userSet","userSetOnce","userAdd","userDel","setPageProperty","setSuperProperties","setDynamicSuperProperties","clearSuperProperties","timeEvent","unsetSuperProperties","initInstance"];r[t]=function(e){return function(){if(this.name)(r[t]._q=r[t]._q||[]).push([e,arguments,this.name]);else if("initInstance"===e){var n=arguments[0];r[t][n]={name:n};for(var a=0;a<o.length;a++)r[t][n][o[a]]=r[t].call(r[t][n],o[a]);(r[t]._q1=r[t]._q1||[]).push([e,arguments])}else(r[t]._q=r[t]._q||[]).push([e,arguments])}};for(var u=0;u<o.length;u++)r[t][o[u]]=r[t].call(null,o[u]);r[t].param=e,r[t].__SV=1.1,l=a.createElement(i),s=a.getElementsByTagName(i)[0],l.async=1,l.src=n,s.parentNode.insertBefore(l,s)}}(
-{
-       
-         appId: "22e445595b0f42bd8c5fe35bc44b88d6",
-         name: "ta",
-        //  send_method:"ajax",
-         sdkUrl: "./thinkingdata.min.js",
-         serverUrl: "https://receiver-ta-dev.thinkingdata.cn",
-         loaded: function(ta) {
-            console.log('XXXX');
-            ta.track(
-                    'test',
-                    {
-                        'prop': 100
-                    }
-                );
-            
-                // ta.login('hahahaha');
-                // // ta.identify('hah1');
-                // ta.track('haha');
-                // ta.logout();
-                // let presetProperties = ta.getPresetProperties();
-                // var os =  presetProperties.os;//os类型，如Android
-                // var screenWidth = presetProperties.screenWidth;//屏幕宽度
-                // var screenHeight = presetProperties.screenHeight;//屏幕高度
-                // var browser = presetProperties.browser;//浏览器类型
-                // var browserVersion =  presetProperties.browserVersion;//浏览器版本号
-                // var deviceId = presetProperties.deviceId;//设备ID
-                // var zoneOffset = presetProperties.zoneOffset;//时区偏移值
-                // console.log("OS:"+os);
-                // console.log("screenWidth:"+screenWidth);
-                // console.log("screenHeight:"+screenHeight);
-                // console.log("browserVersion:"+browserVersion);
-                // console.log("deviceId:" + deviceId);
-                // console.log("zoneOffset:" + zoneOffset);
-                // console.log(JSON.stringify(presetProperties.toEventPresetProperties()));
-         },
-        //  send_method: 'ajax'
-    });
+        !function (e) { if (!window.ThinkingDataAnalyticalTool) { var n = e.sdkUrl, t = e.name, r = window, a = document, i = "script", l = null, s = null; r.ThinkingDataAnalyticalTool = t; var o = ["track", "quick", "login", "identify", "logout", "trackLink", "userSet", "userSetOnce", "userAdd", "userDel", "setPageProperty", "setSuperProperties", "setDynamicSuperProperties", "clearSuperProperties", "timeEvent", "unsetSuperProperties", "initInstance"]; r[t] = function (e) { return function () { if (this.name) (r[t]._q = r[t]._q || []).push([e, arguments, this.name]); else if ("initInstance" === e) { var n = arguments[0]; r[t][n] = { name: n }; for (var a = 0; a < o.length; a++)r[t][n][o[a]] = r[t].call(r[t][n], o[a]); (r[t]._q1 = r[t]._q1 || []).push([e, arguments]) } else (r[t]._q = r[t]._q || []).push([e, arguments]) } }; for (var u = 0; u < o.length; u++)r[t][o[u]] = r[t].call(null, o[u]); r[t].param = e, r[t].__SV = 1.1, l = a.createElement(i), s = a.getElementsByTagName(i)[0], l.async = 1, l.src = n, s.parentNode.insertBefore(l, s) } }(
+            {
+
+                appId: "22e445595b0f42bd8c5fe35bc44b88d6",
+                name: "ta",
+                //  send_method:"ajax",
+                sdkUrl: "./thinkingdata.min.js",
+                serverUrl: "https://receiver-ta-dev.thinkingdata.cn",
+                loaded: function (ta) {
+                    console.log('XXXX');
+                    ta.track(
+                        'test',
+                        {
+                            'prop': 100
+                        }
+                    );
+
+                    // ta.login('hahahaha');
+                    // // ta.identify('hah1');
+                    // ta.track('haha');
+                    // ta.logout();
+                    // let presetProperties = ta.getPresetProperties();
+                    // var os =  presetProperties.os;//os类型，如Android
+                    // var screenWidth = presetProperties.screenWidth;//屏幕宽度
+                    // var screenHeight = presetProperties.screenHeight;//屏幕高度
+                    // var browser = presetProperties.browser;//浏览器类型
+                    // var browserVersion =  presetProperties.browserVersion;//浏览器版本号
+                    // var deviceId = presetProperties.deviceId;//设备ID
+                    // var zoneOffset = presetProperties.zoneOffset;//时区偏移值
+                    // console.log("OS:"+os);
+                    // console.log("screenWidth:"+screenWidth);
+                    // console.log("screenHeight:"+screenHeight);
+                    // console.log("browserVersion:"+browserVersion);
+                    // console.log("deviceId:" + deviceId);
+                    // console.log("zoneOffset:" + zoneOffset);
+                    // console.log(JSON.stringify(presetProperties.toEventPresetProperties()));
+                },
+                //  send_method: 'ajax'
+            });
 
     </script>
     <!--Thinking Analytics SDK END-->
 </head>
+
 <body>
     <p>Enjoy this page for a second, because you won't be coming back here.</p>
-    <button onclick="sendTestData()" >Send Test Data</button>
+    <button onclick="sendTestData()">Send Test Data</button>
     <!-- <a href="night://lolita?name=Tomcat&page=27">打开app</a><br/> -->
     <script>
         //    console.log(document.referrer);
-            // ta.track(
-            //     'test_enable',
-            //     {
-            //         'prop': 100
-            //     }
-            // );
-            // ta.identify('123ABCabc1');
-            // ta.clearSuperProperties();
-            // ta.setDynamicSuperProperties(()=>{var d = new Date(); d.setHours(10); return {date: d}});
-            // ta.timeEvent('ttt');
-            // ta.setSuperProperties({a:1});
-            // ta.initInstance('dd');
-            // ta.track('second');
-            // // ta.dd.identify('debug-id');
-            // ta.dd.track('a');
-            // ta.quick('autoTrack');
-            // ta.login(123);
-            // ta.track(
-            //     'Purchase',              //追踪事件的名称
-            //     {
-            //         'Item': '商品A',
-            //         'ItemNum': 1,
-            //         'Cost': 100
-            //     }                       //需要上传的事件属性
-            // );
-            // ta.logout();
-            // ta.userSet(
-            //     {
-            //         'vip': 1
-            //     }
-            // );
-            // ta.trackLink(
-            //     {
-            //         'tag': ['input', 'button'],
-            //         'class': ['class1', 'class2'],      //自定义的Class名称
-            //         'id': ['id1', 'id2']   //HTML标签
-            //     },                               //监控元素的规则
-            //     'click',                              //追踪事件的名称
-            //     {
-            //         'production': '产品名',
-            //         'name': '元素标识名'
-            //     }                                 //事件的属性
-            // );
-            function sendTestData() {
+        // ta.track(
+        //     'test_enable',
+        //     {
+        //         'prop': 100
+        //     }
+        // );
+        // ta.identify('123ABCabc1');
+        // ta.clearSuperProperties();
+        // ta.setDynamicSuperProperties(()=>{var d = new Date(); d.setHours(10); return {date: d}});
+        // ta.timeEvent('ttt');
+        // ta.setSuperProperties({a:1});
+        // ta.initInstance('dd');
+        // ta.track('second');
+        // // ta.dd.identify('debug-id');
+        // ta.dd.track('a');
+        // ta.quick('autoTrack');
+        // ta.login(123);
+        // ta.track(
+        //     'Purchase',              //追踪事件的名称
+        //     {
+        //         'Item': '商品A',
+        //         'ItemNum': 1,
+        //         'Cost': 100
+        //     }                       //需要上传的事件属性
+        // );
+        // ta.logout();
+        // ta.userSet(
+        //     {
+        //         'vip': 1
+        //     }
+        // );
+        // ta.trackLink(
+        //     {
+        //         'tag': ['input', 'button'],
+        //         'class': ['class1', 'class2'],      //自定义的Class名称
+        //         'id': ['id1', 'id2']   //HTML标签
+        //     },                               //监控元素的规则
+        //     'click',                              //追踪事件的名称
+        //     {
+        //         'production': '产品名',
+        //         'name': '元素标识名'
+        //     }                                 //事件的属性
+        // );
+        function sendTestData() {
             //     ta.setSuperProperties({"super1":1,"super2":100});
-                // ta.optOutTracking();
-                // ta.enableTracking(true);
-               
+            // ta.optOutTracking();
+            // ta.enableTracking(true);
+
             //     // ta.identify('123');
             //     // ta.login('ta-001');
             //     // console.log("distinctId=" + ta.getDistinctId());
@@ -122,6 +124,6 @@
             // window.location = '1.html';
             // window.localStorage.ta = windo
             // localStorage.setItem("ta",JSON.stringify(ta));
-            }
+        }
     </script>
 </body>

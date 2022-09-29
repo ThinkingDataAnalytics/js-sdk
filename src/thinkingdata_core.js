@@ -472,6 +472,11 @@ ThinkingDataAnalyticsLib.prototype.userUniqAppend = function (userProperties, ca
     }
 };
 
+ThinkingDataAnalyticsLib.prototype.flush = function () {
+    if (this.batchConsumer && !this._isDebug()) {
+        this.batchConsumer.flush();
+    }
+};
 
 /**
  * 删除用户. 该操作不可逆，谨慎使用.
@@ -546,7 +551,8 @@ ThinkingDataAnalyticsLib.prototype._sendRequest = function (eventData, callback,
         data.data[0] = _.generateEncryptyData(data.data[0], this._getConfig('secretKey'));
     }
     data['#app_id'] = this._getConfig('appId');
-    data['#flush_time'] = new Date().getTime();
+    //data['#flush_time'] = new Date().getTime();
+    data['#flush_time'] = _.formatTimeZone(new Date(), this._getConfig('zoneOffset')).getTime();
     Log.i(data);
 
     // 通过原生 SDK 发送数据
@@ -572,6 +578,11 @@ ThinkingDataAnalyticsLib.prototype._sendRequest = function (eventData, callback,
         data.data[0]['#uuid'] = _.UUIDv4();
     }
 
+    if (this.batchConsumer && !this._isDebug() && !tryBeacon) {
+        this.batchConsumer.add(data.data[0]);
+        return;
+    }
+
     var urlData;
     if (this._isDebug()) {
         urlData = '&data=' + _.encodeURIComponent(JSON.stringify(data.data[0])) + '&source=client&deviceId=' + this.getDeviceId()
@@ -588,46 +599,179 @@ ThinkingDataAnalyticsLib.prototype._sendRequest = function (eventData, callback,
 
     if (tryBeacon && (typeof navigator !== undefined) && navigator.sendBeacon) {
         var formData = new FormData();
-        formData.append('data', base64Data);
+        if (this._isDebug()) {
+            formData.append('data', _.encodeURIComponent(JSON.stringify(data.data[0])));
+            formData.append('source', 'client');
+            formData.append('deviceId', this.getDeviceId());
+            formData.append('appid', this._getConfig('appId'));
+            formData.append('version', Config.LIB_VERSION);
+            if (this._getConfig('mode') === 'debug_only') {
+                formData.append('dryRun', 1);
+            }
+        } else {
+            formData.append('data', _.base64Encode(data));
+        }
         navigator.sendBeacon(this._getConfig('serverUrl'), formData);
         return;
     }
 
     if (this._getConfig('send_method') === 'ajax') {
         new AjaxTask(urlData, this._getConfig('serverUrl'), this._getConfig('tryCount'), callback, this._isDebug()).run();
-        // var xhr = null;
-        // if (window.XMLHttpRequest) {
-        //     xhr = new XMLHttpRequest();
-        // } else {
-        //     // eslint-disable-next-line no-undef
-        //     xhr = new ActiveXObject('Microsoft.XMLHTTP');
-        // }
-        // var serverUrl = this._getConfig('serverUrl');
-        // xhr.open('post', serverUrl, true);
-        // xhr.setRequestHeader('Content-type', 'application/x-www-form-urlencoded');
-        // var _ta = this;
-        // xhr.onreadystatechange = function () {
-        //     if (xhr.readyState === 4 && xhr.status === 200) {
-        //         callback && callback();
-        //         if (_ta._isDebug()) {
-        //             var response = JSON.parse(xhr.response);
-        //             if (response['errorLevel'] !== 0) {
-        //                 Log.w(response);
-        //             } else {
-        //                 Log.i(response);
-        //             }
-        //         }
-        //     }
-        // };
-        // xhr.send(urlData);
-        /*
-        setTimeout(function () {
-            xhr.abort();
-        }, this._getConfig('dataSendTimeout'));
-        */
     } else {
         this._sendRequestWithImage(urlData, callback);
     }
+};
+
+var dataStoragePrefix = 'ta_';
+var tabStoragePrefix = 'tab_';
+
+function BatchConsumer(config) {
+    this.config = config;
+    this.timer = null;
+    this.batchConfig = _.extend({
+        'size': 5, //间隔多少毫秒发一次数据。
+        'interval': 5000,
+        'storageLimit': 200
+    }, this.config['batch']);
+    if (this.batchConfig.size < 1) {
+        this.batchConfig.size = 1;
+    }
+    if (this.batchConfig.size > 30) {
+        this.batchConfig.size = 30;
+    }
+    this.prefix = this.config['persistencePrefix'];
+    this.tabKey = this.prefix + tabStoragePrefix + this.config['appId'];
+    this.storageLimit = this.batchConfig['storageLimit'];
+}
+
+BatchConsumer.prototype = {
+
+    batchInterval: function () {
+        var self = this;
+        self.timer = setTimeout(function () {
+            self.recycle();
+            self.send();
+            clearTimeout(self.timer);
+            self.batchInterval();
+        }, this.batchConfig.interval);
+    },
+
+    add: function (data) {
+        var d = data;
+        var dataKey = this.prefix + dataStoragePrefix + this.config['appId'] + '_' + String(_.getRandom());
+        var tabStorage = _.localStorage.get(this.tabKey);
+        if (tabStorage === null) {
+            //this.tabKey = tabStoragePrefix;
+            tabStorage = [];
+        } else {
+            tabStorage = _.safeJSONParse(tabStorage) || [];
+        }
+        if (tabStorage.length <= this.storageLimit) {
+            //如果缓存内的数据没有达到最大条数 保存
+            tabStorage.push(dataKey);
+            _.localStorage.set(this.tabKey, JSON.stringify(tabStorage));
+            _.saveObjectVal(dataKey, d);
+        } else {
+            //先删除20条 再保存
+            var deleteDatas = tabStorage.splice(0, 20);
+            console.log('删除的数据:' + deleteDatas);
+            tabStorage.push(dataKey);
+            _.localStorage.set(this.tabKey, JSON.stringify(tabStorage));
+            _.saveObjectVal(dataKey, d);
+            var postData = {};
+            var dList = [];
+            for (var i = 0; i < deleteDatas.length; i++) {
+                var item = _.readObjectVal(deleteDatas[i]);
+                if (!_.hasEncrypty(item)) {
+                    item = _.generateEncryptyData(item, this.config['secretKey']);
+                }
+                dList.push(item);
+            }
+            postData['data'] = dList;
+            postData['#app_id'] = this.config['appId'];
+            // postData['#flush_time'] = new Date().getTime();
+            postData['#flush_time'] = _.formatTimeZone(new Date(), this.config['zoneOffset']).getTime();
+            this.request(postData, deleteDatas);
+        }
+    },
+
+    flush: function () {
+        clearTimeout(this.timer);
+        this.send();
+        this.batchInterval();
+    },
+
+    send: function () {
+        var tabStorage = _.localStorage.get(this.tabKey);
+        if (tabStorage) {
+            tabStorage = _.safeJSONParse(tabStorage) || [];
+            if (tabStorage.length) {
+                var postData = {};
+                var data = [];
+                var tabList = [];
+                var len = tabStorage.length < this.batchConfig.size ? tabStorage.length : this.batchConfig.size;
+                for (var i = 0; i < len; i++) {
+                    var d = _.readObjectVal(tabStorage[i]);
+                    if (!_.hasEncrypty(d)) {
+                        d = _.generateEncryptyData(d, this.config['secretKey']);
+                    }
+                    data.push(d);
+                    tabList.push(tabStorage[i]);
+                }
+                postData['data'] = data;
+                postData['#app_id'] = this.config['appId'];
+                //postData['#flush_time'] = new Date().getTime();
+                postData['#flush_time'] = _.formatTimeZone(new Date(), this.config['zoneOffset']).getTime();
+                this.request(postData, tabList);
+            }
+        }
+    },
+
+    request: function (data, dataKeys) {
+        var self = this;
+        Log.i('flush data');
+        Log.i(data);
+        var pData = JSON.stringify(data);
+        var base64Data = _.base64Encode(pData);
+        var crc = 'crc=' + _.hashCode(base64Data);
+        var urlData = '&data=' + _.encodeURIComponent(base64Data) + '&ext=' + _.encodeURIComponent(crc) + '&version=' + Config.LIB_VERSION;
+        new AjaxTask(urlData, this.config['serverUrl'], this.config['tryCount'], function () {
+            //发送成功 删除缓存数据
+            self.remove(dataKeys);
+        }, false).run();
+    },
+
+    remove: function (dataKeys) {
+        var tabStorage = _.localStorage.get(this.tabKey);
+        if (tabStorage) {
+            var tabStorageData = _.safeJSONParse(tabStorage) || [];
+            for (var i = 0; i < dataKeys.length; i++) {
+                var idx = _.indexOf(tabStorageData, dataKeys[i]);
+                if (idx > -1) {
+                    tabStorageData.splice(idx, 1);
+                }
+                _.localStorage.remove(dataKeys[i]);
+            }
+            _.localStorage.set(this.tabKey, JSON.stringify(tabStorageData));
+        }
+    },
+    recycle: function () {
+        var tabStorage = _.localStorage.get(this.tabKey);
+        if (tabStorage) {
+            tabStorage = _.safeJSONParse(tabStorage) || [];
+            if (tabStorage.length === 0) {
+                for (var i = 0; i < localStorage.length; i++) {
+                    var key = localStorage.key(i);
+                    if (key.indexOf(this.prefix + dataStoragePrefix + this.config['appId']) === 0) {
+                        tabStorage.push(key);
+                    }
+                }
+                if (tabStorage.length > 0) {
+                    _.localStorage.set(this.tabKey, JSON.stringify(tabStorage));
+                }
+            }
+        }
+    },
 };
 
 class AjaxTask {
@@ -979,6 +1123,8 @@ ThinkingDataAnalyticsLib.prototype.quick = function (type, properties) {
             event: 'ta_pageview',
             properties: _.extend(quickProperties, _.info.pageProperties())
         });
+    } else if (typeof type === 'string' && type === 'siteLinker') {
+        siteLinker.init(this, properties);
     } else {
         Log.w('quick方法中没有这个功能' + type);
     }
@@ -1034,6 +1180,11 @@ ThinkingDataAnalyticsLib.prototype.init = function (param) {
             this._setConfig({
                 serverUrl: _.url('basic', param.serverUrl) + '/sync_js'
             });
+        }
+        //是否开启数据批量发送
+        if (this._getConfig('batch') !== undefined && this._getConfig('batch') !== false && _.localStorage.isSupported()) {
+            this.batchConsumer = new BatchConsumer(this['config']);
+            this.batchConsumer.batchInterval();
         }
     } else {
         Log.i('The ThinkingData libraray has been initialized.');
@@ -1199,6 +1350,160 @@ ThinkingDataAnalyticsLib.prototype.setTrackStatus = function (config) {
     }
 };
 
+var siteLinker = {};
+siteLinker.getPartUrl = function (part) {
+    var t = false;
+    var l = this.option.length;
+    if (l) {
+        for (var i = 0; i < l; i++) {
+            if (part.indexOf(this.option[i]['part_url']) > -1) {
+                return true;
+            }
+        }
+    }
+    return t;
+};
+siteLinker.getPartHash = function (part) {
+    var len = this.option.length;
+    var temp = false;
+    if (len) {
+        for (var i = 0; i < len; i++) {
+            if (part.indexOf(this.option[i]['part_url']) > -1) {
+                return this.option[i]['after_hash'];
+            }
+        }
+    }
+    return !!temp;
+};
+siteLinker.getCurrenId = function () {
+    var distinctId = this.ta.getDistinctId();
+    var urlId = 'd' + distinctId;
+    return encodeURIComponent(urlId);
+};
+siteLinker.rewriteUrl = function (url, target) {
+    var reg = /([^?#]+)(\?[^#]*)?(#.*)?/;
+    var arr = reg.exec(url),
+        nurl = '';
+    if (!arr) {
+        return;
+    }
+    var host = arr[1] || '',
+        search = arr[2] || '',
+        hash = arr[3] || '';
+    var idIndex;
+    if (this.getPartHash(url)) {
+        idIndex = hash.indexOf('_tasdk');
+        var queryIndex = hash.indexOf('?');
+        if (queryIndex > -1) {
+            if (idIndex > -1) {
+                nurl = host + search + '#' + hash.substring(1, idIndex) + '_tasdk=' + this.getCurrenId();
+            } else {
+                nurl = host + search + '#' + hash.substring(1) + '&_tasdk=' + this.getCurrenId();
+            }
+        } else {
+            nurl = host + search + '#' + hash.substring(1) + '?_tasdk=' + this.getCurrenId();
+        }
+    } else {
+        idIndex = search.indexOf('_tasdk');
+        var hasQuery = /^\?(\w)+/.test(search);
+        if (hasQuery) {
+            if (idIndex > -1) {
+                nurl = host + '?' + search.substring(1, idIndex) + '_tasdk=' + this.getCurrenId() + hash;
+            } else {
+                nurl = host + '?' + search.substring(1) + '&_tasdk=' + this.getCurrenId() + hash;
+            }
+        } else {
+            nurl = host + '?' + search.substring(1) + '_tasdk=' + this.getCurrenId() + hash;
+        }
+    }
+
+    if (target) {
+        target.href = nurl;
+    }
+    return nurl;
+};
+siteLinker.addClickListen = function () {
+    var site = this;
+    var clickFn = function (event) {
+        var target = event.target;
+        var nodeName = target.tagName.toLowerCase();
+        var parentTarget = target.parentNode;
+        var sdkUrl;
+        var sdkTarget;
+        if ((nodeName === 'a' && target.href) || (parentTarget && parentTarget.tagName && parentTarget.tagName.toLowerCase() === 'a' && parentTarget.href)) {
+            if (nodeName === 'a' && target.href) {
+                sdkUrl = target.href;
+                sdkTarget = target;
+            } else {
+                sdkUrl = parentTarget.href;
+                sdkTarget = parentTarget;
+            }
+            var location = _.URL(sdkUrl);
+            var protocol = location.protocol;
+            if (protocol === 'http:' || protocol === 'https:') {
+                if (site.getPartUrl(sdkUrl)) {
+                    site.rewriteUrl(sdkUrl, sdkTarget);
+                }
+            }
+        }
+    };
+    _.addSiteEvent(document, 'mousedown', clickFn);
+    if (!!window.PointerEvent && 'maxTouchPoints' in window.navigator && window.navigator.maxTouchPoints >= 0) {
+        _.addSiteEvent(document, 'pointerdown', clickFn);
+    }
+};
+siteLinker.getUrlId = function () {
+    var taId = location.href.match(/_tasdk=([aufd][^\?\#\&\=]+)/);
+    if (_.check.isArray(taId) && taId[1]) {
+        var uid = decodeURIComponent(taId[1]);
+        return uid;
+    } else {
+        return '';
+    }
+};
+siteLinker.setRefferId = function () {
+    var distinctId = this.ta.getDistinctId();
+    var urlId = this.getUrlId();
+    if (urlId === '') {
+        return false;
+    }
+    var isAnonymousId = urlId.substring(0, 1) === 'd';
+    urlId = urlId.substring(1);
+    if (urlId === distinctId) {
+        return false;
+    }
+    if (urlId && isAnonymousId) {
+        this.ta.identify(urlId);
+    }
+};
+siteLinker.init = function (ta, option) {
+    //只需要初始化一次
+    if (this.isInited) {
+        return;
+    }
+    this.isInited = true;
+    this.ta = ta;
+    this.setRefferId();
+    if (_.check.isObject(option) && _.check.isArray(option.linker) && option.linker.length > 0) {
+        this.addClickListen();
+    } else {
+        return;
+    }
+    this.option = option.linker;
+    this.option = resolveOption(this.option);
+    function resolveOption(option) {
+        var len = option.length,
+            arr = [];
+        for (var i = 0; i < len; i++) {
+            if (/[A-Za-z0-9]+\./.test(option[i].part_url) && Object.prototype.toString.call(option[i].after_hash) === '[object Boolean]') {
+                arr.push(option[i]);
+            } else {
+                Log.w('linker配置的第 ' + (i + 1) + ' 项格式不正确，请检查参数格式');
+            }
+        }
+        return arr;
+    }
+};
 var tdMaster;
 export function initFromSnippet() {
     if (tdMaster && tdMaster.isLoadSDK) {
