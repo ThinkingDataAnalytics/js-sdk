@@ -13,7 +13,7 @@ export class PropertyChecker {
         }
         _.each(prop, function (v, k) {
             if (!(_.check.isString(v) || _.check.isNumber(v) || _.check.isDate(v) || _.check.isBoolean(v) || _.check.isArray(v)||_.check.isObject(v))) {
-                Log.w('您的数据-', k, v, '-格式不满足要求，可能无法正确入库. 属性值只支持 String, Number, Date, Boolean, Array，Object');
+                Log.w('The format of Data-', k, v, ' does not meet the requirements and may not be stored correctly. The attribute value only supports String, Number, Date, Boolean, Array，Object');
             }
         });
         return prop;
@@ -23,7 +23,7 @@ export class PropertyChecker {
         var flag = true;
         _.each(obj, (content, key) => {
             if (!KEY_NAME_MATCH_REGEX.test(key)) {
-                Log.w('不合法的 KEY 值: ' + key);
+                Log.w('invalid key: ' + key);
                 flag = false;
             }
         });
@@ -31,7 +31,7 @@ export class PropertyChecker {
     }
     static event(s) {
         if (!_.check.isString(s) || !KEY_NAME_MATCH_REGEX.test(s)) {
-            Log.w('请检查参数格式, eventName 必须是英文字母或者 \'_\' 开头, 包含字母和数字的不超过50个字符的字符串: ' + s);
+            Log.w('Please check the parameter format, eventName must be an English letter or a string starting with \'_\', containing letters and numbers with no more than 50 characters: ' + s);
             return false;
         } else {
             return true;
@@ -40,7 +40,7 @@ export class PropertyChecker {
 
     static propertyName(s) {
         if (!_.check.isString(s) || !KEY_NAME_MATCH_REGEX.test(s)) {
-            Log.w('请检查参数格式, propertyName 必须是英文字母或者 \'_\' 开头, 包含字母和数字的不超过50个字符的字符串: ' + s);
+            Log.w('Please check the parameter format, propertyName must be an English letter or a string starting with \'_\', containing letters and numbers with no more than 50 characters: ' + s);
             return false;
         } else {
             return true;
@@ -53,11 +53,10 @@ export class PropertyChecker {
                 if (this._checkPropertiesKey(p)) {
                     return true;
                 } else {
-                    Log.w('请检查参数格式, properties 的 key 只能以字母开头，包含数字、字母和下划线 _，长度最大为50个字符');
+                    Log.w('Please check the parameter format, the key of properties can only start with a letter, contain numbers, letters and underscores _, and the maximum length is 50 characters');
                     return false;
                 }
             } else {
-                Log.w('properties 可以没有，但有的话必须是对象');
                 return false;
             }
         } else {
@@ -67,13 +66,13 @@ export class PropertyChecker {
     static propertiesMust(p) {
         this.stripProperties(p);
         if (p === undefined || !_.check.isObject(p) || _.check.isEmptyObject(p)) {
-            Log.w('properties必须是对象且有值');
+            Log.w('properties must be objects and have values');
             return false;
         } else {
             if (this._checkPropertiesKey(p)) {
                 return true;
             } else {
-                Log.w('请检查参数格式, properties 的 key 只能以字母开头，包含数字、字母和下划线 _，长度最大为50个字符');
+                Log.w('Please check the parameter format, the key of properties can only start with a letter, contain numbers, letters and underscores _, and the maximum length is 50 characters');
                 return false;
             }
         }
@@ -82,7 +81,7 @@ export class PropertyChecker {
         if (_.check.isString(id) && /^.{1,63}$/.test(id)) {
             return true;
         } else {
-            Log.w('用户 id 必须是不能为空，且小于 64 位的字符串');
+            Log.w('User id must be a string that cannot be empty and is less than 64 bits');
             return false;
         }
     }

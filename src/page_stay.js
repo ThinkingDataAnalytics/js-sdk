@@ -5,9 +5,6 @@ import {
 function pageEndTrack() {
     var time = +new Date();
     if (isPageShow === false) {
-        /**
-         * 页面离开时间为 关闭时间-切换tab的时间+之前tab切换离开的时间
-         */
         pageLeaveTime = time - pageHiddenTime + pageLeaveTime;
     }
     var pageStay = Number(time - pageStartTime - pageLeaveTime);
@@ -43,7 +40,7 @@ function getUrl() {
     try {
         url = decodeURIComponent(url);
     } catch (e) {
-        console.log('获取url失败');
+        console.log('Failed to get url');
     }
     return url;
 }

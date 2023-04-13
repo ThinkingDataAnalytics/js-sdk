@@ -224,7 +224,7 @@ _.UUIDv4 = function () {
 _.getReferrer = function (targetReferrer) {
     var referrer = targetReferrer || document.referrer;
     if (typeof referrer !== 'string') {
-        return '取值异常_referrer异常_' + String(referrer);
+        return 'referrer exception' + String(referrer);
     }
     if (referrer.indexOf('https://www.baidu.com/') === 0) {
         referrer = referrer.split('?')[0];
@@ -738,8 +738,8 @@ _.info = {
             '#screen_width': screen.width,
             '#browser': browserInfo.type,
             '#browser_version': browserInfo.version,
-            '#system_language': _.check.isString(navigator.languages[1]) ? navigator.languages[1].toLowerCase() : '取值异常',
-            '#ua': _.check.isString(navigator.userAgent) ? navigator.userAgent.toLowerCase() : '取值异常',
+            '#system_language': _.check.isString(navigator.languages[1]) ? navigator.languages[1].toLowerCase() : 'Value exception',
+            '#ua': _.check.isString(navigator.userAgent) ? navigator.userAgent.toLowerCase() : 'Value exception',
             '#utm': _.getUtm()
         });
     },
@@ -819,7 +819,7 @@ _.generateEncryptyData = function (text, secretKey) {
         encrypt.setPublicKey(pkey);
         var rsaStr = encrypt.encrypt(strKey);
         if (rsaStr === false) {
-            Log.w('加密失败，返回原数据');
+            Log.w('encryption failed');
             return text;
         }
         return {
@@ -828,7 +828,7 @@ _.generateEncryptyData = function (text, secretKey) {
             payload: aesStr
         };
     } catch (e) {
-        Log.w('加密失败，返回原数据');
+        Log.w('encryption failed');
     }
     return text;
 };

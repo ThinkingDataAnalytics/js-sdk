@@ -23,25 +23,6 @@
                         }
                     );
 
-                    // ta.login('hahahaha');
-                    // // ta.identify('hah1');
-                    // ta.track('haha');
-                    // ta.logout();
-                    // let presetProperties = ta.getPresetProperties();
-                    // var os =  presetProperties.os;//os类型，如Android
-                    // var screenWidth = presetProperties.screenWidth;//屏幕宽度
-                    // var screenHeight = presetProperties.screenHeight;//屏幕高度
-                    // var browser = presetProperties.browser;//浏览器类型
-                    // var browserVersion =  presetProperties.browserVersion;//浏览器版本号
-                    // var deviceId = presetProperties.deviceId;//设备ID
-                    // var zoneOffset = presetProperties.zoneOffset;//时区偏移值
-                    // console.log("OS:"+os);
-                    // console.log("screenWidth:"+screenWidth);
-                    // console.log("screenHeight:"+screenHeight);
-                    // console.log("browserVersion:"+browserVersion);
-                    // console.log("deviceId:" + deviceId);
-                    // console.log("zoneOffset:" + zoneOffset);
-                    // console.log(JSON.stringify(presetProperties.toEventPresetProperties()));
                 },
                 //  send_method: 'ajax'
             });
@@ -53,52 +34,9 @@
 <body>
     <p>Enjoy this page for a second, because you won't be coming back here.</p>
     <button onclick="sendTestData()">Send Test Data</button>
-    <!-- <a href="night://lolita?name=Tomcat&page=27">打开app</a><br/> -->
+    <!-- <a href="night://lolita?name=Tomcat&page=27">open app</a><br/> -->
     <script>
-        //    console.log(document.referrer);
-        // ta.track(
-        //     'test_enable',
-        //     {
-        //         'prop': 100
-        //     }
-        // );
-        // ta.identify('123ABCabc1');
-        // ta.clearSuperProperties();
-        // ta.setDynamicSuperProperties(()=>{var d = new Date(); d.setHours(10); return {date: d}});
-        // ta.timeEvent('ttt');
-        // ta.setSuperProperties({a:1});
-        // ta.initInstance('dd');
-        // ta.track('second');
-        // // ta.dd.identify('debug-id');
-        // ta.dd.track('a');
-        // ta.quick('autoTrack');
-        // ta.login(123);
-        // ta.track(
-        //     'Purchase',              //追踪事件的名称
-        //     {
-        //         'Item': '商品A',
-        //         'ItemNum': 1,
-        //         'Cost': 100
-        //     }                       //需要上传的事件属性
-        // );
-        // ta.logout();
-        // ta.userSet(
-        //     {
-        //         'vip': 1
-        //     }
-        // );
-        // ta.trackLink(
-        //     {
-        //         'tag': ['input', 'button'],
-        //         'class': ['class1', 'class2'],      //自定义的Class名称
-        //         'id': ['id1', 'id2']   //HTML标签
-        //     },                               //监控元素的规则
-        //     'click',                              //追踪事件的名称
-        //     {
-        //         'production': '产品名',
-        //         'name': '元素标识名'
-        //     }                                 //事件的属性
-        // );
+        
         function sendTestData() {
             //     ta.setSuperProperties({"super1":1,"super2":100});
             // ta.optOutTracking();

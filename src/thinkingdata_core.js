@@ -31,6 +31,7 @@ var DEFAULT_CONFIG = {
     useAppTrack: false,
     strict: false, // invalid data will be post to server by default.
     tryCount: 3,
+    enableCalibrationTime: false
 };
 
 /**
@@ -196,10 +197,10 @@ ThinkingDataPersistence.prototype._set = function (name, value) {
 var ThinkingDataAnalyticsLib = function () { };
 
 /**
- * 自动上传页面元素的点击事件.
- * @param dom 需要自动采集点击事件的元素的规则，详见使用文档
- * @param evenName 点击事件的 event name
- * @param eventProperties 点击事件的属性
+ * Automatically upload the click event of the page element
+ * @param dom Rules for elements that need to automatically collect click events
+ * @param evenName
+ * @param eventProperties
  */
 ThinkingDataAnalyticsLib.prototype.trackLink = function (dom, eventName, eventProperties) {
     if (!this._isCollectData()) {
@@ -247,7 +248,7 @@ ThinkingDataAnalyticsLib.prototype.trackLink = function (dom, eventName, eventPr
                 var properties = _.extend({}, _.info.pageProperties(), eventProperties);
                 properties['#element_type'] = element.nodeName.toLowerCase();
                 if (_.check.isUndefined(properties['name'])) {
-                    properties['name'] = element.getAttribute('td-name') || element.innerHTML || element.value || '未获取标识';
+                    properties['name'] = element.getAttribute('td-name') || element.innerHTML || element.value || 'Unable to get Identify';
                 }
                 element.addEventListener('click', () => {
                     this._sendRequest({
@@ -268,7 +269,7 @@ ThinkingDataAnalyticsLib.prototype.setPageProperty = function (obj) {
     if (PropertyChecker.properties(obj) || !this._getConfig('strict')) {
         _.extend(this.currentProps, obj);
     } else {
-        Log.w('PageProperty 输入的参数有误');
+        Log.w('Page property setting error');
     }
 };
 
@@ -276,6 +277,10 @@ ThinkingDataAnalyticsLib.prototype.getPageProperty = function () {
     return this.currentProps;
 };
 
+/**
+ *  Gets prefabricated properties for all events.
+ * @returns
+ */
 ThinkingDataAnalyticsLib.prototype.getPresetProperties = function () {
     var properties = _.info.properties();
     var presetProperties = {};
@@ -306,8 +311,8 @@ ThinkingDataAnalyticsLib.prototype.getPresetProperties = function () {
 
 
 /**
- * 设置账号ID. 注意：此方法不会上报登录事件
- * @param accountId 账号 ID
+ * Set the account ID. Note: this method will not send login event.
+ * @param accountId
  */
 ThinkingDataAnalyticsLib.prototype.login = function (accountId) {
     if (!this._isCollectData()) {
@@ -322,13 +327,13 @@ ThinkingDataAnalyticsLib.prototype.login = function (accountId) {
             this['persistence'].setAccountId(accountId);
         }
     } else {
-        Log.e('login 的参数必须是字符串');
+        Log.e('The parameters of the login API must be strings');
     }
 };
 
 /**
- * 清除账号 ID. 注意：此方法不会上报登出事件
- * @param isChangeId 是否重置 distinct ID.
+ * Clear the account ID. Note: this method will not report logout event
+ * @param isChangeId whether to reset distinct ID.
  */
 ThinkingDataAnalyticsLib.prototype.logout = function (isChangeId) {
     if (!this._isCollectData()) {
@@ -342,7 +347,7 @@ ThinkingDataAnalyticsLib.prototype.logout = function (isChangeId) {
 };
 
 /**
- * 设置用户属性. 如果属性已经存在，用本次属性值覆盖之前属性.
+ * Set the user property. If the property already exists, use this property value to overwrite the previous property.
  */
 ThinkingDataAnalyticsLib.prototype.userSet = function (userProperties, callback) {
     if (!this._isCollectData()) {
@@ -357,7 +362,7 @@ ThinkingDataAnalyticsLib.prototype.userSet = function (userProperties, callback)
 };
 
 /**
- * 设置用户属性，如果属性已经存在，则丢弃本次数据.
+ * Set the user Property, if the property already exists, discard the current data.
  */
 ThinkingDataAnalyticsLib.prototype.userSetOnce = function (userProperties, callback) {
     if (!this._isCollectData()) {
@@ -372,7 +377,8 @@ ThinkingDataAnalyticsLib.prototype.userSetOnce = function (userProperties, callb
 };
 
 /**
- * 重置用户属性.
+ *
+Reset user property
  */
 ThinkingDataAnalyticsLib.prototype.userUnset = function (property, callback) {
     if (!this._isCollectData()) {
@@ -389,8 +395,8 @@ ThinkingDataAnalyticsLib.prototype.userUnset = function (property, callback) {
 };
 
 /**
- * 对用户属性进行累加. 属性值只允许为 Number 类型.
- * @param userProperties 如果为字符串，则对该属性执行自增操作.
+ * Accumulate user property. The property value is only allowed to be Number type.
+ * @param userProperties
  */
 ThinkingDataAnalyticsLib.prototype.userAdd = function (userProperties, callback) {
     if (!this._isCollectData()) {
@@ -418,13 +424,13 @@ ThinkingDataAnalyticsLib.prototype.userAdd = function (userProperties, callback)
                 properties: userProperties
             }, callback);
         } else {
-            Log.w('userAdd 属性中的值只能是数字');
+            Log.w('The property value of useradd api must be a number');
         }
     }
 };
 
 /**
- * 追加 Array 类型的用户属性. 属性值必须是 Array.
+ * Appends a user property of type Array. The property value must be an Array.
  */
 ThinkingDataAnalyticsLib.prototype.userAppend = function (userProperties, callback) {
     if (!this._isCollectData()) {
@@ -445,10 +451,15 @@ ThinkingDataAnalyticsLib.prototype.userAppend = function (userProperties, callba
             properties: userProperties
         }, callback);
     } else {
-        Log.w('userAppend 属性中的值只能是 Array');
+        Log.w('The value in the userAppend property can only be Array');
     }
 };
-
+/**
+ * The element appended to the library needs to be done to remove the processing,and then import.
+ * @param {*} userProperties user properties
+ * @param {*} callback
+ * @returns
+ */
 ThinkingDataAnalyticsLib.prototype.userUniqAppend = function (userProperties, callback) {
     if (!this._isCollectData()) {
         return;
@@ -468,10 +479,14 @@ ThinkingDataAnalyticsLib.prototype.userUniqAppend = function (userProperties, ca
             properties: userProperties
         }, callback);
     } else {
-        Log.w('userUniqAppend 属性中的值只能是 Array');
+        Log.w('The value in the userUniqAppend property can only be Array');
     }
 };
 
+/**
+ * Empty the cache queue. When this api is called, the data in the current cache queue will attempt to be reported.
+ * If the report succeeds, local cache data will be deleted.
+ */
 ThinkingDataAnalyticsLib.prototype.flush = function () {
     if (this.batchConsumer && !this._isDebug()) {
         this.batchConsumer.flush();
@@ -479,7 +494,7 @@ ThinkingDataAnalyticsLib.prototype.flush = function () {
 };
 
 /**
- * 删除用户. 该操作不可逆，谨慎使用.
+ * Delete user. This operation is irreversible, use with caution.
  */
 ThinkingDataAnalyticsLib.prototype.userDel = function (callback) {
     if (!this._isCollectData()) {
@@ -491,6 +506,14 @@ ThinkingDataAnalyticsLib.prototype.userDel = function (callback) {
 };
 
 ThinkingDataAnalyticsLib.prototype._sendRequest = function (eventData, callback, tryBeacon) {
+    // var timeCalibration = 6;
+    // if (this._getConfig('enableCalibrationTime')) {
+    //     if (!_.check.isUndefined(eventData.time) && _.check.isDate(eventData.time)) {
+    //         timeCalibration = 5;
+    //     } else {
+    //         timeCalibration = 3;
+    //     }
+    // }
     var time = _.check.isUndefined(eventData.time) || !_.check.isDate(eventData.time) ? new Date() : eventData.time;
     var data = {
         data: [{
@@ -517,25 +540,21 @@ ThinkingDataAnalyticsLib.prototype._sendRequest = function (eventData, callback,
         data.data[0]['properties'] = _.extend({}, {
             '#device_id': this['persistence'].getDeviceId(),
             '#zone_offset': zoneOffset,
-        },
-            _.info.properties(),
-            this.getSuperProperties(),
-            this.dynamicProperties ? this.dynamicProperties() : {},
-            this.getPageProperty()
+        },_.info.properties(),this.getSuperProperties(),this.dynamicProperties ? this.dynamicProperties() : {},this.getPageProperty()
         );
 
-        // 设置 #duration 属性.
         var startTimestamp = this['persistence'].removeEventTimer(eventData.event);
         if (!_.check.isUndefined(startTimestamp)) {
             var durationMillisecond = new Date()
                 .getTime() - startTimestamp;
             var d = parseFloat((durationMillisecond / 1000).toFixed(3));
-            //时间最大不能超过一天
             if (d > 24 * 60 * 60) {
                 d = 24 * 60 * 60;
             }
             data.data[0]['properties']['#duration'] = d;
         }
+        //add time_calibration property
+        // data.data[0]['properties']['#time_calibration'] = timeCalibration;
     } else {
         data.data[0]['properties'] = {};
     }
@@ -546,7 +565,6 @@ ThinkingDataAnalyticsLib.prototype._sendRequest = function (eventData, callback,
     }
 
     _.searchObjDate(data.data[0], this._getConfig('zoneOffset'));
-    //ajax 请求方式才支持数据加密
     if (this._getConfig('send_method') === 'ajax') {
         data.data[0] = _.generateEncryptyData(data.data[0], this._getConfig('secretKey'));
     }
@@ -555,7 +573,7 @@ ThinkingDataAnalyticsLib.prototype._sendRequest = function (eventData, callback,
     data['#flush_time'] = _.formatTimeZone(new Date(), this._getConfig('zoneOffset')).getTime();
     Log.i(data);
 
-    // 通过原生 SDK 发送数据
+    // Send data via native SDK
     if (this._getConfig('useAppTrack')) {
         // eslint-disable-next-line camelcase
         var jsBridge = window.ThinkingData_APP_JS_Bridge || {};
@@ -600,7 +618,8 @@ ThinkingDataAnalyticsLib.prototype._sendRequest = function (eventData, callback,
     if (tryBeacon && (typeof navigator !== undefined) && navigator.sendBeacon) {
         var formData = new FormData();
         if (this._isDebug()) {
-            formData.append('data', _.encodeURIComponent(JSON.stringify(data.data[0])));
+            formData.append('data', JSON.stringify(data.data[0]));
+            // formData.append('data', _.encodeURIComponent(JSON.stringify(data.data[0])));
             formData.append('source', 'client');
             formData.append('deviceId', this.getDeviceId());
             formData.append('appid', this._getConfig('appId'));
@@ -629,7 +648,7 @@ function BatchConsumer(config) {
     this.config = config;
     this.timer = null;
     this.batchConfig = _.extend({
-        'size': 5, //间隔多少毫秒发一次数据。
+        'size': 5,
         'interval': 5000,
         'storageLimit': 200
     }, this.config['batch']);
@@ -658,6 +677,9 @@ BatchConsumer.prototype = {
 
     add: function (data) {
         var d = data;
+        // if (d['properties']['#time_calibration'] === 3) {
+        //     d['properties']['#time_calibration'] = 5;
+        // }
         var dataKey = this.prefix + dataStoragePrefix + this.config['appId'] + '_' + String(_.getRandom());
         var tabStorage = _.localStorage.get(this.tabKey);
         if (tabStorage === null) {
@@ -667,14 +689,12 @@ BatchConsumer.prototype = {
             tabStorage = _.safeJSONParse(tabStorage) || [];
         }
         if (tabStorage.length <= this.storageLimit) {
-            //如果缓存内的数据没有达到最大条数 保存
+            //If the data in the cache does not reach the maximum number, save
             tabStorage.push(dataKey);
             _.localStorage.set(this.tabKey, JSON.stringify(tabStorage));
             _.saveObjectVal(dataKey, d);
         } else {
-            //先删除20条 再保存
             var deleteDatas = tabStorage.splice(0, 20);
-            console.log('删除的数据:' + deleteDatas);
             tabStorage.push(dataKey);
             _.localStorage.set(this.tabKey, JSON.stringify(tabStorage));
             _.saveObjectVal(dataKey, d);
@@ -736,7 +756,6 @@ BatchConsumer.prototype = {
         var crc = 'crc=' + _.hashCode(base64Data);
         var urlData = '&data=' + _.encodeURIComponent(base64Data) + '&ext=' + _.encodeURIComponent(crc) + '&version=' + Config.LIB_VERSION;
         new AjaxTask(urlData, this.config['serverUrl'], this.config['tryCount'], function () {
-            //发送成功 删除缓存数据
             self.remove(dataKeys);
         }, false).run();
     },
@@ -855,7 +874,7 @@ ThinkingDataAnalyticsLib.prototype._sendRequestWithImage = function (data, callb
 };
 
 /**
- * 发送事件. eventProperties 为可选项.
+ * Send event. eventProperties is optional
  */
 ThinkingDataAnalyticsLib.prototype.track = function (eventName, eventProperties, eventTime, callback) {
     if (!this._isCollectData()) {
@@ -865,7 +884,7 @@ ThinkingDataAnalyticsLib.prototype.track = function (eventName, eventProperties,
         this._sendRequest({
             type: 'track',
             event: eventName,
-            time: _.check.isDate(eventTime) ? eventTime : new Date(),
+            time: eventTime,
             properties: eventProperties
         }, callback);
         return;
@@ -874,21 +893,21 @@ ThinkingDataAnalyticsLib.prototype.track = function (eventName, eventProperties,
         this._sendRequest({
             type: 'track',
             event: eventName,
-            time: _.check.isDate(eventTime) ? eventTime : new Date(),
+            time: eventTime,
             properties: eventProperties
         }, callback);
     }
 };
 
 /**
- * 发送可更新的事件数据. 请联系数数客户成功获取进一步支持
+ * Sending Updatable Event
  *
- * @param {object} taEvent 参数对象
- *  eventName: (必须) string 事件名称
- *  eventId: (必须) string 事件唯一 ID
- *  properties: (可选) object 事件属性
- *  eventTime: （可选）Date 事件时间
- *  callback: (可选) function 回调
+ * @param {object} taEvent
+ *  eventName:required
+ *  eventId: required
+ *  properties: optional
+ *  eventTime: optional
+ *  callback: optional
  *
  * Example:
  * ta.trackUpdate(
@@ -902,7 +921,7 @@ ThinkingDataAnalyticsLib.prototype.trackUpdate = function (taEvent) {
         return;
     }
     if (!_.check.isObject(taEvent)) {
-        Log.e('trackUpdate 参数不符合要求');
+        Log.e('The parameter of updateble event does not meet the requirements');
         return;
     }
 
@@ -910,7 +929,7 @@ ThinkingDataAnalyticsLib.prototype.trackUpdate = function (taEvent) {
         this._sendRequest({
             type: 'track_update',
             event: taEvent.eventName,
-            time: _.check.isDate(taEvent.eventTime) ? taEvent.eventTime : new Date(),
+            time: taEvent.eventTime,
             properties: taEvent.properties,
             extraId: taEvent.eventId
         }, taEvent.callback);
@@ -918,21 +937,21 @@ ThinkingDataAnalyticsLib.prototype.trackUpdate = function (taEvent) {
 };
 
 /**
- * 发送可被重写的事件数据. 请联系数数客户成功获取进一步支持
+ * Sending Overwritable Event
  *
- * @param {object} taEvent 参数对象
- *  eventName: (必须) string 事件名称
- *  eventId: (必须) string 事件唯一 ID
- *  properties: (可选) object 事件属性
- *  eventTime: （可选）Date 事件时间
- *  callback: (可选) function 回调
+ * @param {object} taEvent
+ *  eventName: required
+ *  eventId: required
+ *  properties: optional
+ *  eventTime: optional
+ *  callback: optional
  */
 ThinkingDataAnalyticsLib.prototype.trackOverwrite = function (taEvent) {
     if (!this._isCollectData()) {
         return;
     }
     if (!_.check.isObject(taEvent)) {
-        Log.e('trackOverwrite 参数不符合要求');
+        Log.e('The parameter of overwritable event  does not meet the requirements');
         return;
     }
 
@@ -940,7 +959,7 @@ ThinkingDataAnalyticsLib.prototype.trackOverwrite = function (taEvent) {
         this._sendRequest({
             type: 'track_overwrite',
             event: taEvent.eventName,
-            time: _.check.isDate(taEvent.eventTime) ? taEvent.eventTime : new Date(),
+            time: taEvent.eventTime,
             properties: taEvent.properties,
             extraId: taEvent.eventId
         }, taEvent.callback);
@@ -948,21 +967,21 @@ ThinkingDataAnalyticsLib.prototype.trackOverwrite = function (taEvent) {
 };
 
 /**
- * 发送首次触发事件. 请联系数数客户成功获取进一步支持
+ * Sending First Event
  *
- * @param {object} taEvent 参数对象
- *  eventName: (必须) string 事件名称
- *  firstCheckId: (可选) string 用于检测是否首次，默认会使用随机生成的设备 ID
- *  properties: (可选) object 事件属性
- *  eventTime: （可选）Date 事件时间
- *  callback: (可选) function 回调
+ * @param {object} taEvent
+ *  eventName:required
+ *  firstCheckId: optional,By default a randomly generated device ID will be used
+ *  properties:optional
+ *  eventTime: optional
+ *  callback: optional
  */
 ThinkingDataAnalyticsLib.prototype.trackFirstEvent = function (taEvent) {
     if (!this._isCollectData()) {
         return;
     }
     if (!_.check.isObject(taEvent)) {
-        Log.e('trackFirstEvent 参数不符合要求');
+        Log.e('The parameter of first event does not meet the requirements');
         return;
     }
 
@@ -970,7 +989,7 @@ ThinkingDataAnalyticsLib.prototype.trackFirstEvent = function (taEvent) {
         this._sendRequest({
             type: 'track',
             event: taEvent.eventName,
-            time: _.check.isDate(taEvent.eventTime) ? taEvent.eventTime : new Date(),
+            time: taEvent.eventTime,
             properties: taEvent.properties,
             firstCheckId: taEvent.firstCheckId ? taEvent.firstCheckId : this.getDeviceId()
         }, taEvent.callback);
@@ -978,14 +997,14 @@ ThinkingDataAnalyticsLib.prototype.trackFirstEvent = function (taEvent) {
 };
 
 /**
- * 发送事件，会用 sendBeacon 的方式先尝试上报一次，然后再用系统配置方式上报
+ * First try to report the event through sendBeacon, and then use the system configuration method to report the event
  */
 ThinkingDataAnalyticsLib.prototype.trackWithBeacon = function (eventName, eventProperties, eventTime, callback) {
     if (eventName === 'ta_page_hide') {
         this._sendRequest({
             type: 'track',
             event: eventName,
-            time: _.check.isDate(eventTime) ? eventTime : new Date(),
+            time: eventTime,
             properties: eventProperties
         }, callback, true);
         return;
@@ -994,14 +1013,14 @@ ThinkingDataAnalyticsLib.prototype.trackWithBeacon = function (eventName, eventP
         this._sendRequest({
             type: 'track',
             event: eventName,
-            time: _.check.isDate(eventTime) ? eventTime : new Date(),
+            time: eventTime,
             properties: eventProperties
         }, callback, true);
     }
 };
 
 /**
- * 设置 #distinct_id. distinct_id 默认与 #device_id 相同.
+ * Setting DistinctId.Default disinct id is the same as device id
  */
 ThinkingDataAnalyticsLib.prototype.identify = function (id) {
     if (!this._isCollectData()) {
@@ -1016,10 +1035,14 @@ ThinkingDataAnalyticsLib.prototype.identify = function (id) {
             this['persistence'].setDistinctId(id);
         }
     } else {
-        Log.e('identify 的参数必须是字符串');
+        Log.e('The parameter of identify API requires a string');
     }
 };
 
+/**
+ * Get a visitor ID: The #distinct_id value in the reported data.
+ * @returns distinct ID
+ */
 ThinkingDataAnalyticsLib.prototype.getDistinctId = function () {
     return this['persistence'].getDistinctId();
 };
@@ -1033,9 +1056,7 @@ ThinkingDataAnalyticsLib.prototype._isCollectData = function () {
 };
 
 /**
- * 设置公共属性. 在支持缓存的情况下，公共属性会持久化到 localStorage 或者 cookie 中.
- * 与 setPageProperty 区别：setPageProperty 只对当前页面有效.
- * 如果 setPageProperty 设置了与公共属性同样的属性值，则 setPageProperty 会覆盖公共属性.
+ * Set public properties. Public properties will be persisted to localStorage or cookie if caching is supported.
  */
 ThinkingDataAnalyticsLib.prototype.setSuperProperties = function (superProperties) {
     if (!this._isCollectData()) {
@@ -1044,21 +1065,31 @@ ThinkingDataAnalyticsLib.prototype.setSuperProperties = function (superPropertie
     if (PropertyChecker.propertiesMust(superProperties) || !this._getConfig('strict')) {
         this['persistence'].setSuperProperties(_.extend({}, this.getSuperProperties(), superProperties));
     } else {
-        Log.w('setSuperProperties 参数不合法');
+        Log.w('The paramater of setSuperProperties API requires object');
     }
 };
-
+/**
+ * Gets the public event properties that have been set.
+ * @returns super properties
+ */
 ThinkingDataAnalyticsLib.prototype.getSuperProperties = function () {
     return this['persistence'].getSuperProperties();
 };
-
+/**
+ * Clear all public event attributes.
+ * @returns
+ */
 ThinkingDataAnalyticsLib.prototype.clearSuperProperties = function () {
     if (!this._isCollectData()) {
         return;
     }
     this['persistence'].setSuperProperties({});
 };
-
+/**
+ * Clears a public event attribute.
+ * @param {*} propertyName Public event attribute key to clear
+ * @returns
+ */
 ThinkingDataAnalyticsLib.prototype.unsetSuperProperty = function (propertyName) {
     if (!this._isCollectData()) {
         return;
@@ -1071,10 +1102,7 @@ ThinkingDataAnalyticsLib.prototype.unsetSuperProperty = function (propertyName) 
 };
 
 /**
- * 设置动态公共属性. 动态公共属性只对当前页面有效.
- * 如果动态公共属性中有与公共属性相同的属性名，则覆盖公共属性的值.
- *
- * setPageProperty 的值会覆盖动态公共属性的值.
+ * Set dynamic public properties. Dynamic public properties are only valid for the current page
  */
 ThinkingDataAnalyticsLib.prototype.setDynamicSuperProperties = function (dynamicProperties) {
     if (!this._isCollectData()) {
@@ -1084,15 +1112,16 @@ ThinkingDataAnalyticsLib.prototype.setDynamicSuperProperties = function (dynamic
         if (PropertyChecker.properties(dynamicProperties()) || !this._getConfig('strict')) {
             this.dynamicProperties = dynamicProperties;
         } else {
-            Log.w('动态公共属性必须返回合法的属性值');
+            Log.w('The return value of dynamic properties requires an object');
         }
     } else {
-        Log.w('setDynamicSuperProperties 的参数必须是 function 类型');
+        Log.w('The paramater of setDynamicSuperProperties API requires function type');
     }
 };
 
 /**
- * 对事件计时. 调用此函数之后，track eventName 会在属性中加入 #duration 表示时长, 单位为秒.
+ * Timing Event.
+ * After calling this api, track eventName will add #duration to the attribute to indicate the duration, and the unit is second.
  */
 ThinkingDataAnalyticsLib.prototype.timeEvent = function (eventName) {
     if (!this._isCollectData()) {
@@ -1126,7 +1155,7 @@ ThinkingDataAnalyticsLib.prototype.quick = function (type, properties) {
     } else if (typeof type === 'string' && type === 'siteLinker') {
         siteLinker.init(this, properties);
     } else {
-        Log.w('quick方法中没有这个功能' + type);
+        Log.w('The quick method does not support the parameter of' + type);
     }
 };
 
@@ -1171,7 +1200,6 @@ ThinkingDataAnalyticsLib.prototype.init = function (param) {
                 send_method: 'image'
             });
         }
-        new PageLifeCycle(this, this._getConfig('autoTrack')).start();
         if (this._isDebug()) {
             this._setConfig({
                 serverUrl: _.url('basic', param.serverUrl) + '/data_debug'
@@ -1181,11 +1209,17 @@ ThinkingDataAnalyticsLib.prototype.init = function (param) {
                 serverUrl: _.url('basic', param.serverUrl) + '/sync_js'
             });
         }
-        //是否开启数据批量发送
+        //Whether to enable data batch sending
         if (this._getConfig('batch') !== undefined && this._getConfig('batch') !== false && _.localStorage.isSupported()) {
             this.batchConsumer = new BatchConsumer(this['config']);
             this.batchConsumer.batchInterval();
         }
+        new PageLifeCycle(this, this._getConfig('autoTrack')).start();
+        var m  = 'normal';
+        if(this.config.mode){
+            m = this.config.mode;
+        }
+        Log.i('Thinking Analytics SDK initialized successfully with mode: '+m+', APP ID : '+this.config.appId+', server url: '+this.config.serverUrl+', libversion: '+Config.LIB_VERSION);
     } else {
         Log.i('The ThinkingData libraray has been initialized.');
     }
@@ -1209,29 +1243,31 @@ class PageLifeCycle {
 
     start() {
         var page = this;
-        if ('onpageShow' in window) {
-            _.addEvent(window, 'pageShow', function () {
-                page.trackPageShowEvent();
-            });
-            _.addEvent(window, 'pagehide', function () {
-                //page.trackPageHideEventOnClose();
-            });
-        } else {
-            _.addEvent(window, 'load', function () {
-                page.trackPageShowEvent();
-            });
-            _.addEvent(window, 'beforeunload', function () {
-                //page.trackPageHideEventOnClose();
-            });
-        }
+        // if ('onpageShow' in window) {
+        //     _.addEvent(window, 'pageShow', function () {
+        //         page.trackPageShowEvent();
+        //     });
+        //     _.addEvent(window, 'pagehide', function () {
+        //         //page.trackPageHideEventOnClose();
+        //     });
+        // } else {
+        //     _.addEvent(window, 'load', function () {
+        //         page.trackPageShowEvent();
+        //     });
+        //     _.addEvent(window, 'beforeunload', function () {
+        //         //page.trackPageHideEventOnClose();
+        //     });
+        // }
+
+        page.trackPageShowEvent();
 
         if ('onvisibilitychange' in document) {
             _.addEvent(document, 'visibilitychange', function () {
                 if (document.hidden) {
-                    //页面隐藏 发送ta_page_hide
+                    //when the page hides, sending ta_page_hide event
                     page.trackPageHideEvent();
                 } else {
-                    //页面展示 发送ta_page_show
+                    //when the page shows, sending ta_page_show event
                     page.trackPageShowEvent();
                 }
             });
@@ -1253,7 +1289,7 @@ class PageLifeCycle {
     }
 
     trackPageHideEventOnClose() {
-        //如果页面隐藏的时候，发送了ta_page_hide，此时关闭不需要发送
+        //If ta_page_hide is sent when the page is hidden, it does not need to be sent at this time
         if (this.autoPageHide && this.isPageShow) {
             this.taLib.trackWithBeacon('ta_page_hide', _.info.pageProperties());
         }
@@ -1262,23 +1298,15 @@ class PageLifeCycle {
 }
 
 /**
- * 创建新的实例(只允许在 master instance 下调用).
+ * @param name instance name，string Type required
+ * @param param optional
  *
- * @param name 新实例的名称. 字符串类型. 必填.
- * @param param 新实例的配置参数. object 类型. 选填.
- *
- * 子实例与主实例共享 pageProperty 和 device id. 其 distinct_id 初始值为 device id.
- *
- * 子实例从主实例继承配置信息，默认不使用本地缓存. 如果需要使用本地缓存，在 param 中指明即可:
+ * The child instance shares the pageProperty and device id with the main instance. The initial value of distinct_id is device id.
+ * The child instance inherits the configuration information from the main instance, and does not use the local cache by default. If you need to use the local cache, just specify it in param
  * 	{
  * 		persistenceEnabled: true,
  * 	}
- * 注意: 相同 name 的子实例将会共享缓存名称.
- *
- * 使用方法(ta 为主实例):
- * 	ta.initInstance('newInstance');
- * 	ta.newInstance.identify('new_distinct_id');
- * 	ta.newInstance.track('test_event');
+ *Note: Sub-instances with the same name will share the cache name.
  *
  */
 ThinkingDataAnalyticsLib.prototype.initInstance = function (name, param) {
@@ -1317,7 +1345,8 @@ ThinkingDataAnalyticsLib.prototype.initInstance = function (name, param) {
 };
 
 /**
- * @param enabled 是否采集上报数据 默认为true,表示数据正常上报
+ * @param enabled
+ * Whether to collect and report data The default is true, indicating that the data is reported normally
  */
 ThinkingDataAnalyticsLib.prototype.enableTracking = function (enabled) {
     if (typeof enabled === 'boolean') {
@@ -1335,10 +1364,14 @@ ThinkingDataAnalyticsLib.prototype.optOutTracking = function () {
 ThinkingDataAnalyticsLib.prototype.optInTracking = function () {
     this['persistence'].setOptTracking(true);
 };
-
+/**
+ * Switch reporting status
+ * @param {*} config
+ */
 ThinkingDataAnalyticsLib.prototype.setTrackStatus = function (config) {
     if (_.check.isObject(config)) {
         var status = config['status'];
+        Log.i('swtich track status : ' + status);
         if (status === 'pause') {
             this.enableTracking(false);
         } else if (status === 'stop') {
@@ -1477,7 +1510,6 @@ siteLinker.setRefferId = function () {
     }
 };
 siteLinker.init = function (ta, option) {
-    //只需要初始化一次
     if (this.isInited) {
         return;
     }
@@ -1498,7 +1530,7 @@ siteLinker.init = function (ta, option) {
             if (/[A-Za-z0-9]+\./.test(option[i].part_url) && Object.prototype.toString.call(option[i].after_hash) === '[object Boolean]') {
                 arr.push(option[i]);
             } else {
-                Log.w('linker配置的第 ' + (i + 1) + ' 项格式不正确，请检查参数格式');
+                Log.w('The configuration of linker ' + (i + 1) + ' is not supported.Please check format');
             }
         }
         return arr;
@@ -1521,7 +1553,7 @@ export function initFromSnippet() {
         var instance = new ThinkingDataAnalyticsLib();
         instance.init(tdMaster.param);
 
-        // 创建子实例
+        // create light instance
         if (tdMaster._q1 && _.check.isArray(tdMaster._q1) && tdMaster._q1.length > 0) {
             _.each(tdMaster._q1, function (content) {
                 instance[content[0]].apply(instance, slice.call(content[1]));
