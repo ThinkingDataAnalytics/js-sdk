@@ -10,9 +10,10 @@
         x = null,
         y = null;
     w[TD_LIB_NAME] = n;
-    var methods = ['track', 'quick', 'login', 'identify', 'logout', 'trackLink', 'userSet', 'userSetOnce',
-        'userAdd', 'userDel', 'setPageProperty', 'setSuperProperties', 'setDynamicSuperProperties', 'clearSuperProperties',
-        'timeEvent', 'unsetSuperProperties', 'initInstance'
+    var methods = ['track', 'quick', 'login', 'identify','setDistinctId', 'logout', 'trackLink', 'userSet', 'userSetOnce',
+        'userAdd', 'userDel','userDelete','setPageProperty', 'setSuperProperties', 'setDynamicSuperProperties', 'clearSuperProperties',
+        'timeEvent', 'unsetSuperProperty', 'initInstance','userUnset','userAppend','userUniqAppend','flush','trackUpdate','trackOverwrite','trackFirstEvent',
+        'trackFirst','trackWithBeacon','getDistinctId','getDeviceId','getSuperProperties','setTrackStatus'
     ];
     w[n] = function (a) {
         return function () {

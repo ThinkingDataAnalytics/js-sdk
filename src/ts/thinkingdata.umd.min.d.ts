@@ -27,10 +27,14 @@ declare namespace thinkingdata {
     function flush(): void;
     function userDel(callback: any): void;
     function userDel(): void;
+    function userDelete(callback: any): void;
+    function userDelete(): void;
     function trackUpdate(taEvent: any): void;
     function trackOverwrite(taEvent: any): void;
     function trackFirstEvent(taEvent: any): void;
+    function trackFirst(taEvent: any): void;
     function identify(id: any): void;
+    function setDistinctId(id: any): void;
     function getDistinctId(): String;
     function getDeviceId(): String;
     function setSuperProperties(superProperties: any): void;

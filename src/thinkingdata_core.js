@@ -12,10 +12,8 @@ import {
 import Config from './config';
 // import pageStayInit from './page_stay';
 
-/** @const */
 var MASTER_INSTANCE_NAME = 'thinkingdata';
 
-/** @const */
 var DEFAULT_CONFIG = {
     _name: MASTER_INSTANCE_NAME, // instance name for internal use. don't override this property.
     appId: '',
@@ -31,13 +29,10 @@ var DEFAULT_CONFIG = {
     useAppTrack: false,
     strict: false, // invalid data will be post to server by default.
     tryCount: 3,
-    enableCalibrationTime: false
+    enableCalibrationTime: false,
+    imgUseCrossorigin:false
 };
 
-/**
- * constructor of Persistence instance. cookie or localStorage will be used for cache user data.
- * @param {object} param the config of the persistence instance.
- */
 var ThinkingDataPersistence = function (param) {
     this['_state'] = {};
     this.crossSubDomain = param['crossSubDomain'];
@@ -193,16 +188,18 @@ ThinkingDataPersistence.prototype._set = function (name, value) {
     this._save();
 };
 
-// Constructor of the lib.
-var ThinkingDataAnalyticsLib = function () { };
+/**
+ * @class
+ */
+var TDAnalytics = function () { };
 
 /**
  * Automatically upload the click event of the page element
- * @param dom Rules for elements that need to automatically collect click events
- * @param evenName
- * @param eventProperties
+ * @param {Object} dom Rules for elements that need to automatically collect click events
+ * @param {String} evenName event name
+ * @param {Object} eventProperties event properties
  */
-ThinkingDataAnalyticsLib.prototype.trackLink = function (dom, eventName, eventProperties) {
+TDAnalytics.prototype.trackLink = function (dom, eventName, eventProperties) {
     if (!this._isCollectData()) {
         return;
     }
@@ -262,7 +259,11 @@ ThinkingDataAnalyticsLib.prototype.trackLink = function (dom, eventName, eventPr
     }
 };
 
-ThinkingDataAnalyticsLib.prototype.setPageProperty = function (obj) {
+/**
+ * Set page public properties
+ * @param {Object} obj page public properties
+ */
+TDAnalytics.prototype.setPageProperty = function (obj) {
     if (!this._isCollectData()) {
         return;
     }
@@ -273,15 +274,19 @@ ThinkingDataAnalyticsLib.prototype.setPageProperty = function (obj) {
     }
 };
 
-ThinkingDataAnalyticsLib.prototype.getPageProperty = function () {
+/**
+ * Get the page public properties of the current page
+ * @returns page public properties
+ */
+TDAnalytics.prototype.getPageProperty = function () {
     return this.currentProps;
 };
 
 /**
  *  Gets prefabricated properties for all events.
- * @returns
+ * @returns preset properties
  */
-ThinkingDataAnalyticsLib.prototype.getPresetProperties = function () {
+TDAnalytics.prototype.getPresetProperties = function () {
     var properties = _.info.properties();
     var presetProperties = {};
     presetProperties.os = properties['#os'];
@@ -312,9 +317,9 @@ ThinkingDataAnalyticsLib.prototype.getPresetProperties = function () {
 
 /**
  * Set the account ID. Note: this method will not send login event.
- * @param accountId
+ * @param {String} accountId account id
  */
-ThinkingDataAnalyticsLib.prototype.login = function (accountId) {
+TDAnalytics.prototype.login = function (accountId) {
     if (!this._isCollectData()) {
         return;
     }
@@ -325,6 +330,7 @@ ThinkingDataAnalyticsLib.prototype.login = function (accountId) {
         var currentAccountId = this['persistence'].getAccountId();
         if (accountId !== currentAccountId) {
             this['persistence'].setAccountId(accountId);
+            Log.i('[ThinkingData] Info: Login SDK, AccountId = '+accountId);
         }
     } else {
         Log.e('The parameters of the login API must be strings');
@@ -333,9 +339,9 @@ ThinkingDataAnalyticsLib.prototype.login = function (accountId) {
 
 /**
  * Clear the account ID. Note: this method will not report logout event
- * @param isChangeId whether to reset distinct ID.
+ * @param {Boolean} isChangeId whether to reset distinct ID.
  */
-ThinkingDataAnalyticsLib.prototype.logout = function (isChangeId) {
+TDAnalytics.prototype.logout = function (isChangeId) {
     if (!this._isCollectData()) {
         return;
     }
@@ -344,12 +350,15 @@ ThinkingDataAnalyticsLib.prototype.logout = function (isChangeId) {
         this['persistence'].setDistinctId(distinctId);
     }
     this['persistence'].setAccountId('');
+    Log.i('[ThinkingData] Info: Logout SDK');
 };
 
 /**
  * Set the user property. If the property already exists, use this property value to overwrite the previous property.
+ * @param {Object} userProperties user properties
+ * @param {Function} callback Event reporting result callback
  */
-ThinkingDataAnalyticsLib.prototype.userSet = function (userProperties, callback) {
+TDAnalytics.prototype.userSet = function (userProperties, callback) {
     if (!this._isCollectData()) {
         return;
     }
@@ -363,8 +372,10 @@ ThinkingDataAnalyticsLib.prototype.userSet = function (userProperties, callback)
 
 /**
  * Set the user Property, if the property already exists, discard the current data.
+ * @param {Object} userProperties user properties
+ * @param {Function} callback Event reporting result callback
  */
-ThinkingDataAnalyticsLib.prototype.userSetOnce = function (userProperties, callback) {
+TDAnalytics.prototype.userSetOnce = function (userProperties, callback) {
     if (!this._isCollectData()) {
         return;
     }
@@ -377,10 +388,11 @@ ThinkingDataAnalyticsLib.prototype.userSetOnce = function (userProperties, callb
 };
 
 /**
- *
-Reset user property
+ * Reset user property
+ * @param {String} userProperties user property
+ * @param {Function} callback Event reporting result callback
  */
-ThinkingDataAnalyticsLib.prototype.userUnset = function (property, callback) {
+TDAnalytics.prototype.userUnset = function (property, callback) {
     if (!this._isCollectData()) {
         return;
     }
@@ -396,9 +408,10 @@ ThinkingDataAnalyticsLib.prototype.userUnset = function (property, callback) {
 
 /**
  * Accumulate user property. The property value is only allowed to be Number type.
- * @param userProperties
+ * @param {String} userProperties user properties
+ * @param {Function} callback Event reporting result callback
  */
-ThinkingDataAnalyticsLib.prototype.userAdd = function (userProperties, callback) {
+TDAnalytics.prototype.userAdd = function (userProperties, callback) {
     if (!this._isCollectData()) {
         return;
     }
@@ -431,8 +444,10 @@ ThinkingDataAnalyticsLib.prototype.userAdd = function (userProperties, callback)
 
 /**
  * Appends a user property of type Array. The property value must be an Array.
+ * @param {String} userProperties user properties
+ * @param {Function} callback Event reporting result callback
  */
-ThinkingDataAnalyticsLib.prototype.userAppend = function (userProperties, callback) {
+TDAnalytics.prototype.userAppend = function (userProperties, callback) {
     if (!this._isCollectData()) {
         return;
     }
@@ -456,11 +471,10 @@ ThinkingDataAnalyticsLib.prototype.userAppend = function (userProperties, callba
 };
 /**
  * The element appended to the library needs to be done to remove the processing,and then import.
- * @param {*} userProperties user properties
- * @param {*} callback
- * @returns
+ * @param {Object} userProperties user properties
+ * @param {Function} callback Event reporting result callback
  */
-ThinkingDataAnalyticsLib.prototype.userUniqAppend = function (userProperties, callback) {
+TDAnalytics.prototype.userUniqAppend = function (userProperties, callback) {
     if (!this._isCollectData()) {
         return;
     }
@@ -487,16 +501,21 @@ ThinkingDataAnalyticsLib.prototype.userUniqAppend = function (userProperties, ca
  * Empty the cache queue. When this api is called, the data in the current cache queue will attempt to be reported.
  * If the report succeeds, local cache data will be deleted.
  */
-ThinkingDataAnalyticsLib.prototype.flush = function () {
+TDAnalytics.prototype.flush = function () {
     if (this.batchConsumer && !this._isDebug()) {
         this.batchConsumer.flush();
     }
 };
 
+TDAnalytics.prototype.userDel = function (callback) {
+    this.userDelete(callback);
+};
+
 /**
  * Delete user. This operation is irreversible, use with caution.
+ * @param {Function} callback result callback
  */
-ThinkingDataAnalyticsLib.prototype.userDel = function (callback) {
+TDAnalytics.prototype.userDelete = function (callback) {
     if (!this._isCollectData()) {
         return;
     }
@@ -505,7 +524,7 @@ ThinkingDataAnalyticsLib.prototype.userDel = function (callback) {
     }, callback);
 };
 
-ThinkingDataAnalyticsLib.prototype._sendRequest = function (eventData, callback, tryBeacon) {
+TDAnalytics.prototype._sendRequest = function (eventData, callback, tryBeacon) {
     // var timeCalibration = 6;
     // if (this._getConfig('enableCalibrationTime')) {
     //     if (!_.check.isUndefined(eventData.time) && _.check.isDate(eventData.time)) {
@@ -571,6 +590,7 @@ ThinkingDataAnalyticsLib.prototype._sendRequest = function (eventData, callback,
     data['#app_id'] = this._getConfig('appId');
     //data['#flush_time'] = new Date().getTime();
     data['#flush_time'] = _.formatTimeZone(new Date(), this._getConfig('zoneOffset')).getTime();
+    Log.i('[ThinkingData] Info: Enqueue data : ');
     Log.i(data);
 
     // Send data via native SDK
@@ -749,7 +769,7 @@ BatchConsumer.prototype = {
 
     request: function (data, dataKeys) {
         var self = this;
-        Log.i('flush data');
+        Log.i('[ThinkingData] Debug: Send event, Request =');
         Log.i(data);
         var pData = JSON.stringify(data);
         var base64Data = _.base64Encode(pData);
@@ -838,11 +858,11 @@ class AjaxTask {
     }
 }
 
-ThinkingDataAnalyticsLib.prototype._isDebug = function () {
+TDAnalytics.prototype._isDebug = function () {
     return this._getConfig('mode') === 'debug' || this._getConfig('mode') === 'debug_only';
 };
 
-ThinkingDataAnalyticsLib.prototype._sendRequestWithImage = function (data, callback) {
+TDAnalytics.prototype._sendRequestWithImage = function (data, callback) {
     function callAndDelete(img) {
         if (img && !img.hasCalled) {
             img.hasCalled = true;
@@ -856,6 +876,9 @@ ThinkingDataAnalyticsLib.prototype._sendRequestWithImage = function (data, callb
     var img = document.createElement('img');
 
     img.callback = callback;
+    if(this._getConfig('imgUseCrossorigin')){
+        img.crossOrigin = 'anonymous';
+    }
     setTimeout(callAndDelete, this._getConfig('dataSendTimeout'), img);
 
     img.onload = function () {
@@ -875,8 +898,12 @@ ThinkingDataAnalyticsLib.prototype._sendRequestWithImage = function (data, callb
 
 /**
  * Send event. eventProperties is optional
+ * @param {String} eventName event name
+ * @param {Object} eventProperties event properties
+ * @param {Date} eventTime event time
+ * @param {Function} callback Event reporting result callback
  */
-ThinkingDataAnalyticsLib.prototype.track = function (eventName, eventProperties, eventTime, callback) {
+TDAnalytics.prototype.track = function (eventName, eventProperties, eventTime, callback) {
     if (!this._isCollectData()) {
         return;
     }
@@ -901,8 +928,7 @@ ThinkingDataAnalyticsLib.prototype.track = function (eventName, eventProperties,
 
 /**
  * Sending Updatable Event
- *
- * @param {object} taEvent
+ * @param {Object} taEvent
  *  eventName:required
  *  eventId: required
  *  properties: optional
@@ -916,7 +942,7 @@ ThinkingDataAnalyticsLib.prototype.track = function (eventName, eventProperties,
  *  properties: {}
  * );
  */
-ThinkingDataAnalyticsLib.prototype.trackUpdate = function (taEvent) {
+TDAnalytics.prototype.trackUpdate = function (taEvent) {
     if (!this._isCollectData()) {
         return;
     }
@@ -938,7 +964,6 @@ ThinkingDataAnalyticsLib.prototype.trackUpdate = function (taEvent) {
 
 /**
  * Sending Overwritable Event
- *
  * @param {object} taEvent
  *  eventName: required
  *  eventId: required
@@ -946,7 +971,7 @@ ThinkingDataAnalyticsLib.prototype.trackUpdate = function (taEvent) {
  *  eventTime: optional
  *  callback: optional
  */
-ThinkingDataAnalyticsLib.prototype.trackOverwrite = function (taEvent) {
+TDAnalytics.prototype.trackOverwrite = function (taEvent) {
     if (!this._isCollectData()) {
         return;
     }
@@ -966,9 +991,12 @@ ThinkingDataAnalyticsLib.prototype.trackOverwrite = function (taEvent) {
     }
 };
 
+TDAnalytics.prototype.trackFirstEvent = function (taEvent) {
+    this.trackFirst(taEvent);
+};
+
 /**
  * Sending First Event
- *
  * @param {object} taEvent
  *  eventName:required
  *  firstCheckId: optional,By default a randomly generated device ID will be used
@@ -976,7 +1004,7 @@ ThinkingDataAnalyticsLib.prototype.trackOverwrite = function (taEvent) {
  *  eventTime: optional
  *  callback: optional
  */
-ThinkingDataAnalyticsLib.prototype.trackFirstEvent = function (taEvent) {
+TDAnalytics.prototype.trackFirst = function (taEvent) {
     if (!this._isCollectData()) {
         return;
     }
@@ -998,8 +1026,12 @@ ThinkingDataAnalyticsLib.prototype.trackFirstEvent = function (taEvent) {
 
 /**
  * First try to report the event through sendBeacon, and then use the system configuration method to report the event
+ * @param {String} eventName event name
+ * @param {Object} eventProperties event properties
+ * @param {Date} eventTime event time
+ * @param {Function} callback Event reporting result callback
  */
-ThinkingDataAnalyticsLib.prototype.trackWithBeacon = function (eventName, eventProperties, eventTime, callback) {
+TDAnalytics.prototype.trackWithBeacon = function (eventName, eventProperties, eventTime, callback) {
     if (eventName === 'ta_page_hide') {
         this._sendRequest({
             type: 'track',
@@ -1019,10 +1051,15 @@ ThinkingDataAnalyticsLib.prototype.trackWithBeacon = function (eventName, eventP
     }
 };
 
+TDAnalytics.prototype.identify = function (id) {
+    this.setDistinctId(id);
+};
+
 /**
  * Setting DistinctId.Default disinct id is the same as device id
+ * @param {String} id distinct id
  */
-ThinkingDataAnalyticsLib.prototype.identify = function (id) {
+TDAnalytics.prototype.setDistinctId = function (id) {
     if (!this._isCollectData()) {
         return;
     }
@@ -1033,9 +1070,10 @@ ThinkingDataAnalyticsLib.prototype.identify = function (id) {
         var distinctId = this['persistence'].getDistinctId();
         if (id !== distinctId) {
             this['persistence'].setDistinctId(id);
+            Log.i('[ThinkingData] Info: Setting distinct ID, DistinctId = '+id);
         }
     } else {
-        Log.e('The parameter of identify API requires a string');
+        Log.e('The parameter of setDistinctId API requires a string');
     }
 };
 
@@ -1043,22 +1081,27 @@ ThinkingDataAnalyticsLib.prototype.identify = function (id) {
  * Get a visitor ID: The #distinct_id value in the reported data.
  * @returns distinct ID
  */
-ThinkingDataAnalyticsLib.prototype.getDistinctId = function () {
+TDAnalytics.prototype.getDistinctId = function () {
     return this['persistence'].getDistinctId();
 };
 
-ThinkingDataAnalyticsLib.prototype.getDeviceId = function () {
+/**
+ * Get a device ID: The #device_id value in the reported data.
+ * @returns device ID
+ */
+TDAnalytics.prototype.getDeviceId = function () {
     return this['persistence'].getDeviceId();
 };
 
-ThinkingDataAnalyticsLib.prototype._isCollectData = function () {
+TDAnalytics.prototype._isCollectData = function () {
     return this['persistence'].getOptTracking() && this['persistence'].getEnableTracking();
 };
 
 /**
  * Set public properties. Public properties will be persisted to localStorage or cookie if caching is supported.
+ * @param {Object} superProperties public properties
  */
-ThinkingDataAnalyticsLib.prototype.setSuperProperties = function (superProperties) {
+TDAnalytics.prototype.setSuperProperties = function (superProperties) {
     if (!this._isCollectData()) {
         return;
     }
@@ -1072,14 +1115,13 @@ ThinkingDataAnalyticsLib.prototype.setSuperProperties = function (superPropertie
  * Gets the public event properties that have been set.
  * @returns super properties
  */
-ThinkingDataAnalyticsLib.prototype.getSuperProperties = function () {
+TDAnalytics.prototype.getSuperProperties = function () {
     return this['persistence'].getSuperProperties();
 };
 /**
  * Clear all public event attributes.
- * @returns
  */
-ThinkingDataAnalyticsLib.prototype.clearSuperProperties = function () {
+TDAnalytics.prototype.clearSuperProperties = function () {
     if (!this._isCollectData()) {
         return;
     }
@@ -1087,10 +1129,9 @@ ThinkingDataAnalyticsLib.prototype.clearSuperProperties = function () {
 };
 /**
  * Clears a public event attribute.
- * @param {*} propertyName Public event attribute key to clear
- * @returns
+ * @param {String} propertyName Public event attribute key to clear
  */
-ThinkingDataAnalyticsLib.prototype.unsetSuperProperty = function (propertyName) {
+TDAnalytics.prototype.unsetSuperProperty = function (propertyName) {
     if (!this._isCollectData()) {
         return;
     }
@@ -1103,8 +1144,9 @@ ThinkingDataAnalyticsLib.prototype.unsetSuperProperty = function (propertyName) 
 
 /**
  * Set dynamic public properties. Dynamic public properties are only valid for the current page
+ * @param {Function} dynamicProperties dynamic public properties
  */
-ThinkingDataAnalyticsLib.prototype.setDynamicSuperProperties = function (dynamicProperties) {
+TDAnalytics.prototype.setDynamicSuperProperties = function (dynamicProperties) {
     if (!this._isCollectData()) {
         return;
     }
@@ -1122,8 +1164,9 @@ ThinkingDataAnalyticsLib.prototype.setDynamicSuperProperties = function (dynamic
 /**
  * Timing Event.
  * After calling this api, track eventName will add #duration to the attribute to indicate the duration, and the unit is second.
+ * @param {String} eventName timing event name
  */
-ThinkingDataAnalyticsLib.prototype.timeEvent = function (eventName) {
+TDAnalytics.prototype.timeEvent = function (eventName) {
     if (!this._isCollectData()) {
         return;
     }
@@ -1137,8 +1180,10 @@ ThinkingDataAnalyticsLib.prototype.timeEvent = function (eventName) {
 
 /**
  * track ta_pageview.
+ * @param {String} type autoTrack or siteLinker
+ * @param {Object} properties event properties
  */
-ThinkingDataAnalyticsLib.prototype.quick = function (type, properties) {
+TDAnalytics.prototype.quick = function (type, properties) {
     if (!this._isCollectData()) {
         return;
     }
@@ -1159,7 +1204,7 @@ ThinkingDataAnalyticsLib.prototype.quick = function (type, properties) {
     }
 };
 
-ThinkingDataAnalyticsLib.prototype._setConfig = function (config) {
+TDAnalytics.prototype._setConfig = function (config) {
     if (_.check.isObject(config)) {
         _.extend(this['config'], config);
 
@@ -1173,12 +1218,15 @@ ThinkingDataAnalyticsLib.prototype._setConfig = function (config) {
     }
 };
 
-ThinkingDataAnalyticsLib.prototype._getConfig = function (propName) {
+TDAnalytics.prototype._getConfig = function (propName) {
     return this['config'][propName];
 };
 
-
-ThinkingDataAnalyticsLib.prototype.init = function (param) {
+/**
+ * SDK init
+ * @param {Object} param init config
+ */
+TDAnalytics.prototype.init = function (param) {
     if (_.check.isUndefined(this['config'])) {
         this['config'] = {};
         this.currentProps = this.currentProps || {};
@@ -1219,7 +1267,7 @@ ThinkingDataAnalyticsLib.prototype.init = function (param) {
         if(this.config.mode){
             m = this.config.mode;
         }
-        Log.i('Thinking Analytics SDK initialized successfully with mode: '+m+', APP ID : '+this.config.appId+', server url: '+this.config.serverUrl+', libversion: '+Config.LIB_VERSION);
+        Log.i('[ThinkingData] Info: TDAnalytics SDK initialize success, AppId = '+this.config.appId+', ServerUrl = '+this.config.serverUrl+', Mode = '+m + ', DeviceId = '+this.getDeviceId()+', Lib = js, LibVersion = '+Config.LIB_VERSION);
     } else {
         Log.i('The ThinkingData libraray has been initialized.');
     }
@@ -1298,18 +1346,15 @@ class PageLifeCycle {
 }
 
 /**
- * @param name instance name，string Type required
- * @param param optional
- *
+ * create another instance
+ * @param {String} name instance name，string Type required
+ * @param {Object} param optional
  * The child instance shares the pageProperty and device id with the main instance. The initial value of distinct_id is device id.
- * The child instance inherits the configuration information from the main instance, and does not use the local cache by default. If you need to use the local cache, just specify it in param
- * 	{
- * 		persistenceEnabled: true,
- * 	}
- *Note: Sub-instances with the same name will share the cache name.
+ * The child instance inherits the configuration information from the main instance, and does not use the local cache by default. If you need to use the local cache, just specify it in param persistenceEnabled: true
+ * Note: Sub-instances with the same name will share the cache name.
  *
  */
-ThinkingDataAnalyticsLib.prototype.initInstance = function (name, param) {
+TDAnalytics.prototype.initInstance = function (name, param) {
     if (!_.check.isString(name) || (!_.check.isUndefined(param) && !_.check.isObject(param))) {
         Log.w('invalid parameter of initInstance(string, object).');
         return null;
@@ -1329,7 +1374,7 @@ ThinkingDataAnalyticsLib.prototype.initInstance = function (name, param) {
         param = {};
     }
 
-    var instance = new ThinkingDataAnalyticsLib();
+    var instance = new TDAnalytics();
     var config = _.extend({}, this.config, {
         _name: name,
         persistenceEnabled: false,
@@ -1344,34 +1389,30 @@ ThinkingDataAnalyticsLib.prototype.initInstance = function (name, param) {
     this[name] = instance;
 };
 
-/**
- * @param enabled
- * Whether to collect and report data The default is true, indicating that the data is reported normally
- */
-ThinkingDataAnalyticsLib.prototype.enableTracking = function (enabled) {
+TDAnalytics.prototype.enableTracking = function (enabled) {
     if (typeof enabled === 'boolean') {
         this['persistence'].setEnableTracking(enabled);
     }
 };
 
-ThinkingDataAnalyticsLib.prototype.optOutTracking = function () {
+TDAnalytics.prototype.optOutTracking = function () {
     this['persistence'].setSuperProperties({});
     this['persistence'].setAccountId('');
     this['persistence'].clearEventTimer();
     this['persistence'].setOptTracking(false);
 };
 
-ThinkingDataAnalyticsLib.prototype.optInTracking = function () {
+TDAnalytics.prototype.optInTracking = function () {
     this['persistence'].setOptTracking(true);
 };
 /**
  * Switch reporting status
- * @param {*} config
+ * @param {Object} config track status
  */
-ThinkingDataAnalyticsLib.prototype.setTrackStatus = function (config) {
+TDAnalytics.prototype.setTrackStatus = function (config) {
     if (_.check.isObject(config)) {
         var status = config['status'];
-        Log.i('swtich track status : ' + status);
+        Log.i('[ThinkingData] Info: Change Status to '+status);
         if (status === 'pause') {
             this.enableTracking(false);
         } else if (status === 'stop') {
@@ -1506,7 +1547,7 @@ siteLinker.setRefferId = function () {
         return false;
     }
     if (urlId && isAnonymousId) {
-        this.ta.identify(urlId);
+        this.ta.setDistinctId(urlId);
     }
 };
 siteLinker.init = function (ta, option) {
@@ -1550,7 +1591,7 @@ export function initFromSnippet() {
         }
 
         tdMaster.isLoadSDK = true;
-        var instance = new ThinkingDataAnalyticsLib();
+        var instance = new TDAnalytics();
         instance.init(tdMaster.param);
 
         // create light instance
@@ -1578,6 +1619,6 @@ export function initFromSnippet() {
 }
 
 export function initAsModule() {
-    tdMaster = new ThinkingDataAnalyticsLib();
+    tdMaster = new TDAnalytics();
     return tdMaster;
 }
