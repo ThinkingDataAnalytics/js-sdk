@@ -1,6 +1,6 @@
 {
     "name": "thinkingdata-browser",
-    "version": "2.0.0-beta.1",
+    "version": "2.0.0",
     "description": "The official ThinkingData JavaScript browser client library",
     "scripts": {
         "lint": "eslint ./src",
