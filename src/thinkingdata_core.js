@@ -30,7 +30,7 @@ var DEFAULT_CONFIG = {
     strict: false, // invalid data will be post to server by default.
     tryCount: 3,
     enableCalibrationTime: false,
-    imgUseCrossorigin:false
+    imgUseCrossorigin: false
 };
 
 var ThinkingDataPersistence = function (param) {
@@ -330,7 +330,7 @@ TDAnalytics.prototype.login = function (accountId) {
         var currentAccountId = this['persistence'].getAccountId();
         if (accountId !== currentAccountId) {
             this['persistence'].setAccountId(accountId);
-            Log.i('[ThinkingData] Info: Login SDK, AccountId = '+accountId);
+            Log.i('[ThinkingData] Info: Login SDK, AccountId = ' + accountId);
         }
     } else {
         Log.e('The parameters of the login API must be strings');
@@ -559,7 +559,7 @@ TDAnalytics.prototype._sendRequest = function (eventData, callback, tryBeacon) {
         data.data[0]['properties'] = _.extend({}, {
             '#device_id': this['persistence'].getDeviceId(),
             '#zone_offset': zoneOffset,
-        },_.info.properties(),this.getSuperProperties(),this.dynamicProperties ? this.dynamicProperties() : {},this.getPageProperty()
+        }, _.info.properties(), this.getSuperProperties(), this.dynamicProperties ? this.dynamicProperties() : {}, this.getPageProperty()
         );
 
         var startTimestamp = this['persistence'].removeEventTimer(eventData.event);
@@ -655,22 +655,22 @@ TDAnalytics.prototype._sendRequest = function (eventData, callback, tryBeacon) {
     }
 
     if (this._getConfig('send_method') === 'ajax') {
-        new AjaxTask(urlData, this._getConfig('serverUrl'), this._getConfig('tryCount'), callback, this._isDebug()).run();
+        new AjaxTask(urlData, this._getConfig('serverUrl'), this._getConfig('tryCount'), callback, null,this._isDebug(),this._getConfig('dataSendTimeout')).run();
     } else {
         this._sendRequestWithImage(urlData, callback);
     }
 };
 
-var dataStoragePrefix = 'ta_';
 var tabStoragePrefix = 'tab_';
+var storagePrefix = 'ta_jssdk_';
 
 function BatchConsumer(config) {
     this.config = config;
     this.timer = null;
     this.batchConfig = _.extend({
-        'size': 5,
-        'interval': 5000,
-        'storageLimit': 200
+        'size': 6,
+        'interval': 6000,
+        'maxLimit': 500
     }, this.config['batch']);
     if (this.batchConfig.size < 1) {
         this.batchConfig.size = 1;
@@ -678,148 +678,137 @@ function BatchConsumer(config) {
     if (this.batchConfig.size > 30) {
         this.batchConfig.size = 30;
     }
-    this.prefix = this.config['persistencePrefix'];
-    this.tabKey = this.prefix + tabStoragePrefix + this.config['appId'];
-    this.storageLimit = this.batchConfig['storageLimit'];
+    this.maxLimit = this.batchConfig['maxLimit'];
+    this.batchList = [];
+    //Synchronize data not sent last time
+    this.storageKey = storagePrefix + this.config.appId;
+    try {
+        var storageList = JSON.parse(_.localStorage.get(this.storageKey));
+        if (_.check.isArray(storageList)) {
+            this.batchList = storageList;
+        }
+        var prefix = this.config['persistencePrefix'];
+        var tabKey = prefix+tabStoragePrefix + this.config.appId;
+        var tabs = JSON.parse(_.localStorage.get(tabKey));
+        if (_.check.isArray(tabs)) {
+            for(var i = 0;i<tabs.length;i++){
+                var oldItem = JSON.parse(_.localStorage.get(tabs[i]));
+                console.log(oldItem);
+                this.batchList.push(oldItem);
+                _.localStorage.remove(tabs[i]);
+            }
+            _.localStorage.remove(tabKey);
+        }
+    } catch (error) {
+        Log.e(error);
+    }
+    this.dataHasChange = false;
+    this.dataSendTimeStamp = 0;
 }
 
 BatchConsumer.prototype = {
 
     batchInterval: function () {
+        this.loopWrite();
+        this.loopSend();
+    },
+
+    loopWrite: function () {
+        var self = this;
+        setTimeout(function () {
+            self.batchWrite();
+            self.loopWrite();
+        }, 500);
+    },
+
+    batchWrite: function () {
+        if (this.dataHasChange) {
+            this.dataHasChange = false;
+            _.localStorage.set(this.storageKey, JSON.stringify(this.batchList));
+        }
+    },
+
+    loopSend: function () {
         var self = this;
         self.timer = setTimeout(function () {
-            self.recycle();
-            self.send();
+            self.batchSend();
             clearTimeout(self.timer);
-            self.batchInterval();
+            self.loopSend();
         }, this.batchConfig.interval);
     },
 
+
     add: function (data) {
-        var d = data;
-        // if (d['properties']['#time_calibration'] === 3) {
-        //     d['properties']['#time_calibration'] = 5;
-        // }
-        var dataKey = this.prefix + dataStoragePrefix + this.config['appId'] + '_' + String(_.getRandom());
-        var tabStorage = _.localStorage.get(this.tabKey);
-        if (tabStorage === null) {
-            //this.tabKey = tabStoragePrefix;
-            tabStorage = [];
-        } else {
-            tabStorage = _.safeJSONParse(tabStorage) || [];
+        if (this.batchList.length > this.maxLimit) {
+            this.batchList.shift();
         }
-        if (tabStorage.length <= this.storageLimit) {
-            //If the data in the cache does not reach the maximum number, save
-            tabStorage.push(dataKey);
-            _.localStorage.set(this.tabKey, JSON.stringify(tabStorage));
-            _.saveObjectVal(dataKey, d);
+        this.batchList.push(data);
+        this.dataHasChange = true;
+        if (this.batchList.length > this.batchConfig.size) {
+            this.batchSend();
+        }
+    },
+
+
+    batchSend: function () {
+        var nowDate = new Date();
+        if (this.dataSendTimeStamp !== 0 && nowDate.getTime() - this.dataSendTimeStamp < (this.config.dataSendTimeout + 500)) {
+            return;
+        }
+        this.dataSendTimeStamp = nowDate.getTime();
+        var sendData;
+        if (this.batchList.length > 50) {
+            sendData = this.batchList.slice(0, 50);
         } else {
-            var deleteDatas = tabStorage.splice(0, 20);
-            tabStorage.push(dataKey);
-            _.localStorage.set(this.tabKey, JSON.stringify(tabStorage));
-            _.saveObjectVal(dataKey, d);
+            sendData = this.batchList;
+        }
+        var len = sendData.length;
+        var self = this;
+        if (len > 0) {
             var postData = {};
-            var dList = [];
-            for (var i = 0; i < deleteDatas.length; i++) {
-                var item = _.readObjectVal(deleteDatas[i]);
-                if (!_.hasEncrypty(item)) {
-                    item = _.generateEncryptyData(item, this.config['secretKey']);
-                }
-                dList.push(item);
-            }
-            postData['data'] = dList;
+            postData['data'] = sendData;
             postData['#app_id'] = this.config['appId'];
-            // postData['#flush_time'] = new Date().getTime();
-            postData['#flush_time'] = _.formatTimeZone(new Date(), this.config['zoneOffset']).getTime();
-            this.request(postData, deleteDatas);
+            postData['#flush_time'] = new Date().getTime();
+            Log.i('[ThinkingData] Debug: Send event, Request =');
+            Log.i(postData);
+            var pData = JSON.stringify(postData);
+            var base64Data = _.base64Encode(pData);
+            var crc = 'crc=' + _.hashCode(base64Data);
+            var urlData = '&data=' + _.encodeURIComponent(base64Data) + '&ext=' + _.encodeURIComponent(crc) + '&version=' + Config.LIB_VERSION;
+            new AjaxTask(urlData, this.config['serverUrl'], 0, function () {
+                self.batchRemove(len);
+            }, function () {
+                self.dataSendTimeStamp = 0;
+            }, false, this.config.dataSendTimeout).run();
         }
     },
 
     flush: function () {
         clearTimeout(this.timer);
-        this.send();
-        this.batchInterval();
+        this.batchSend();
+        this.loopSend();
     },
 
-    send: function () {
-        var tabStorage = _.localStorage.get(this.tabKey);
-        if (tabStorage) {
-            tabStorage = _.safeJSONParse(tabStorage) || [];
-            if (tabStorage.length) {
-                var postData = {};
-                var data = [];
-                var tabList = [];
-                var len = tabStorage.length < this.batchConfig.size ? tabStorage.length : this.batchConfig.size;
-                for (var i = 0; i < len; i++) {
-                    var d = _.readObjectVal(tabStorage[i]);
-                    if (!_.hasEncrypty(d)) {
-                        d = _.generateEncryptyData(d, this.config['secretKey']);
-                    }
-                    data.push(d);
-                    tabList.push(tabStorage[i]);
-                }
-                postData['data'] = data;
-                postData['#app_id'] = this.config['appId'];
-                //postData['#flush_time'] = new Date().getTime();
-                postData['#flush_time'] = _.formatTimeZone(new Date(), this.config['zoneOffset']).getTime();
-                this.request(postData, tabList);
-            }
+    batchRemove(len) {
+        this.dataSendTimeStamp = 0;
+        this.batchList.splice(0, len);
+        this.dataHasChange = true;
+        this.batchWrite();
+        if(this.batchList.length > 0){
+            this.flush();
         }
-    },
-
-    request: function (data, dataKeys) {
-        var self = this;
-        Log.i('[ThinkingData] Debug: Send event, Request =');
-        Log.i(data);
-        var pData = JSON.stringify(data);
-        var base64Data = _.base64Encode(pData);
-        var crc = 'crc=' + _.hashCode(base64Data);
-        var urlData = '&data=' + _.encodeURIComponent(base64Data) + '&ext=' + _.encodeURIComponent(crc) + '&version=' + Config.LIB_VERSION;
-        new AjaxTask(urlData, this.config['serverUrl'], this.config['tryCount'], function () {
-            self.remove(dataKeys);
-        }, false).run();
-    },
-
-    remove: function (dataKeys) {
-        var tabStorage = _.localStorage.get(this.tabKey);
-        if (tabStorage) {
-            var tabStorageData = _.safeJSONParse(tabStorage) || [];
-            for (var i = 0; i < dataKeys.length; i++) {
-                var idx = _.indexOf(tabStorageData, dataKeys[i]);
-                if (idx > -1) {
-                    tabStorageData.splice(idx, 1);
-                }
-                _.localStorage.remove(dataKeys[i]);
-            }
-            _.localStorage.set(this.tabKey, JSON.stringify(tabStorageData));
-        }
-    },
-    recycle: function () {
-        var tabStorage = _.localStorage.get(this.tabKey);
-        if (tabStorage) {
-            tabStorage = _.safeJSONParse(tabStorage) || [];
-            if (tabStorage.length === 0) {
-                for (var i = 0; i < localStorage.length; i++) {
-                    var key = localStorage.key(i);
-                    if (key.indexOf(this.prefix + dataStoragePrefix + this.config['appId']) === 0) {
-                        tabStorage.push(key);
-                    }
-                }
-                if (tabStorage.length > 0) {
-                    _.localStorage.set(this.tabKey, JSON.stringify(tabStorage));
-                }
-            }
-        }
-    },
+    }
 };
 
 class AjaxTask {
-    constructor(data, serverUrl, tryCount, callback, isDebug) {
+    constructor(data, serverUrl, tryCount, success, error, isDebug, dataSendTimeout) {
         this.data = data;
         this.serverUrl = serverUrl;
         this.tryCount = tryCount ? tryCount : 3;
-        this.callback = callback;
+        this.success = success;
+        this.error = error;
         this.isDebug = isDebug;
+        this.dataSendTimeout = dataSendTimeout;
     }
     run() {
         var xhr = null;
@@ -832,27 +821,63 @@ class AjaxTask {
         xhr.open('post', this.serverUrl, true);
         xhr.setRequestHeader('Content-type', 'application/x-www-form-urlencoded');
         var task = this;
+        var errorTimer;
+        function abort() {
+            try {
+                if (xhr && typeof xhr === 'object' && xhr.abort) {
+                    xhr.abort();
+                }
+            } catch (error) {
+                Log.e(error);
+            }
+            if (errorTimer) {
+                clearTimeout(errorTimer);
+                errorTimer = null;
+                task.error && task.error();
+                xhr.onreadystatechange = null;
+                xhr.onload = null;
+                xhr.onerror = null;
+            }
+        }
+        errorTimer = setTimeout(function () {
+            abort();
+        }, this.dataSendTimeout);
         xhr.onreadystatechange = function () {
-            if (xhr.readyState === 4) {
-                if ((xhr.status >= 200 && xhr.status < 300) || xhr.status === 304) {
-                    task.callback && task.callback();
-                    if (task.isDebug) {
-                        var response = JSON.parse(xhr.response);
-                        if (response['errorLevel'] !== 0) {
-                            Log.w(response);
-                        } else {
-                            Log.i(response);
+            try {
+                if (xhr.readyState === 4) {
+                    if ((xhr.status >= 200 && xhr.status < 300) || xhr.status === 304) {
+                        task.success && task.success();
+                        if (errorTimer) {
+                            clearTimeout(errorTimer);
+                            errorTimer = null;
+                        }
+                        if (task.isDebug) {
+                            var response = JSON.parse(xhr.response);
+                            if (response['errorLevel'] !== 0) {
+                                Log.w(response);
+                            } else {
+                                Log.i(response);
+                            }
+                        }
+                    } else {
+                        task.error && task.error();
+                        if (errorTimer) {
+                            clearTimeout(errorTimer);
+                            errorTimer = null;
+                        }
+                        if (task.tryCount > 0) {
+                            task.onFailed();
                         }
                     }
-                } else {
-                    task.onFailed();
                 }
+            } catch (error) {
+                Log.e(error);
             }
         };
         xhr.send(this.data);
     }
     onFailed() {
-        if (--this.tryCount > 0) {
+        if (--this.tryCount >= 0) {
             this.run();
         }
     }
@@ -876,7 +901,7 @@ TDAnalytics.prototype._sendRequestWithImage = function (data, callback) {
     var img = document.createElement('img');
 
     img.callback = callback;
-    if(this._getConfig('imgUseCrossorigin')){
+    if (this._getConfig('imgUseCrossorigin')) {
         img.crossOrigin = 'anonymous';
     }
     setTimeout(callAndDelete, this._getConfig('dataSendTimeout'), img);
@@ -1070,7 +1095,7 @@ TDAnalytics.prototype.setDistinctId = function (id) {
         var distinctId = this['persistence'].getDistinctId();
         if (id !== distinctId) {
             this['persistence'].setDistinctId(id);
-            Log.i('[ThinkingData] Info: Setting distinct ID, DistinctId = '+id);
+            Log.i('[ThinkingData] Info: Setting distinct ID, DistinctId = ' + id);
         }
     } else {
         Log.e('The parameter of setDistinctId API requires a string');
@@ -1263,11 +1288,11 @@ TDAnalytics.prototype.init = function (param) {
             this.batchConsumer.batchInterval();
         }
         new PageLifeCycle(this, this._getConfig('autoTrack')).start();
-        var m  = 'normal';
-        if(this.config.mode){
+        var m = 'normal';
+        if (this.config.mode) {
             m = this.config.mode;
         }
-        Log.i('[ThinkingData] Info: TDAnalytics SDK initialize success, AppId = '+this.config.appId+', ServerUrl = '+this.config.serverUrl+', Mode = '+m + ', DeviceId = '+this.getDeviceId()+', Lib = js, LibVersion = '+Config.LIB_VERSION);
+        Log.i('[ThinkingData] Info: TDAnalytics SDK initialize success, AppId = ' + this.config.appId + ', ServerUrl = ' + this.config.serverUrl + ', Mode = ' + m + ', DeviceId = ' + this.getDeviceId() + ', Lib = js, LibVersion = ' + Config.LIB_VERSION);
     } else {
         Log.i('The ThinkingData libraray has been initialized.');
     }
@@ -1412,7 +1437,7 @@ TDAnalytics.prototype.optInTracking = function () {
 TDAnalytics.prototype.setTrackStatus = function (config) {
     if (_.check.isObject(config)) {
         var status = config['status'];
-        Log.i('[ThinkingData] Info: Change Status to '+status);
+        Log.i('[ThinkingData] Info: Change Status to ' + status);
         if (status === 'pause') {
             this.enableTracking(false);
         } else if (status === 'stop') {

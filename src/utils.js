@@ -738,7 +738,7 @@ _.info = {
             '#screen_width': screen.width,
             '#browser': browserInfo.type,
             '#browser_version': browserInfo.version,
-            '#system_language': _.check.isString(navigator.languages[1]) ? navigator.languages[1].toLowerCase() : 'Value exception',
+            '#system_language': _.check.isString(navigator.language) ? navigator.language : 'Value exception',
             '#ua': _.check.isString(navigator.userAgent) ? navigator.userAgent.toLowerCase() : 'Value exception',
             '#utm': _.getUtm()
         });

@@ -18,6 +18,7 @@ zip ta_js_sdk_${npm_package_version}.zip *.min.*;
 zip ta_js_sdk.zip *.min.*;
 mkdir -p npm_js
 cp -f thinkingdata.umd.min.js npm_js/thinkingdata.umd.min.js
+cp -f thinkingdata.umd.min.d.ts npm_js/thinkingdata.umd.min.d.ts
 cat>npm_js/package.json<<EOF           
 {
   "name": "thinkingdata-browser",
