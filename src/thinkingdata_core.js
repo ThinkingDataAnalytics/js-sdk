@@ -553,7 +553,7 @@ TDAnalytics.prototype._sendRequest = function (eventData, callback, tryBeacon) {
             data.data[0]['#first_check_id'] = eventData.firstCheckId;
         }
         let zoneOffset = 0 - (time.getTimezoneOffset() / 60.0);
-        if (this._getConfig('zoneOffset')) {
+        if (this._getConfig('zoneOffset') !== undefined) {
             zoneOffset = this._getConfig('zoneOffset');
         }
         data.data[0]['properties'] = _.extend({}, {
