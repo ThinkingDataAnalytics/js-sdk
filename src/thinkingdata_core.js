@@ -609,6 +609,12 @@ TDAnalytics.prototype._sendRequest = function (eventData, callback, tryBeacon) {
             iframe = null;
             (typeof callback === 'function') && callback();
             return;
+        } else if (window.ThinkingData_APP_Flutter_Bridge) {
+            window.ThinkingData_APP_Flutter_Bridge.postMessage(JSON.stringify(data));
+            return;
+        } else if (window.ReactNativeWebView && window.ThinkingData_APP_ReactNative_Bridge) {
+            window.ThinkingData_APP_ReactNative_Bridge(JSON.stringify({type: 'tdanalytics_reactnative_sdk', event: data}));
+            return;
         }
     }
 
@@ -804,7 +810,7 @@ class AjaxTask {
     constructor(data, serverUrl, tryCount, success, error, isDebug, dataSendTimeout) {
         this.data = data;
         this.serverUrl = serverUrl;
-        this.tryCount = tryCount ? tryCount : 3;
+        this.tryCount = tryCount == undefined || tryCount == null ? 3 : tryCount;
         this.success = success;
         this.error = error;
         this.isDebug = isDebug;
@@ -845,7 +851,9 @@ class AjaxTask {
         xhr.onreadystatechange = function () {
             try {
                 if (xhr.readyState === 4) {
-                    if ((xhr.status >= 200 && xhr.status < 300) || xhr.status === 304) {
+                    if (xhr.status >= 100 && xhr.status < 200) {
+                        Log.i("Ignoring temporary status code 1xx.");
+                    } else if ((xhr.status >= 200 && xhr.status < 300) || xhr.status === 304) {
                         task.success && task.success();
                         if (errorTimer) {
                             clearTimeout(errorTimer);
