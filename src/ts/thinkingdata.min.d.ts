@@ -49,6 +49,7 @@ declare namespace thinkingdata {
     function optOutTracking(): void;
     function optInTracking(): void;
     function setTrackStatus(config: any): void;
+    function autoTrackSinglePage(): void;
 }
 declare class PresetProperties {
     toEventPresetProperties(): any;

@@ -8,9 +8,10 @@ uglifyjs build/thinkingdata.esm.js -c -m -o ./release/thinkingdata.esm.min.js
 uglifyjs build/thinkingdata.cjs.js -c -m -o ./release/thinkingdata.cjs.min.js
 #uglifyjs thinkingdata_jslib_snippet.js -c -m -o release/thinkingdata_jslib_snippet.min.js
 
-cp -f src/ts/thinkingdata.cjs.min.d.ts release/thinkingdata.cjs.min.d.ts
-cp -f src/ts/thinkingdata.esm.min.d.ts release/thinkingdata.esm.min.d.ts
-cp -f src/ts/thinkingdata.umd.min.d.ts release/thinkingdata.umd.min.d.ts
+cp -f src/ts/thinkingdata.min.d.ts release/thinkingdata.cjs.min.d.ts
+cp -f src/ts/thinkingdata.min.d.ts release/thinkingdata.esm.min.d.ts
+cp -f src/ts/thinkingdata.min.d.ts release/thinkingdata.umd.min.d.ts
+cp -f src/ts/thinkingdata.min.d.ts release/thinkingdata.min.d.ts
 
 pushd release; 
 # zip ThinkingDataJSLib_V${npm_package_version}.zip *.min.js;

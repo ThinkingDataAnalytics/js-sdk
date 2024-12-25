@@ -154,7 +154,17 @@ _.check = {
             return false;
         }
         return true;
-    }
+    },
+
+    isValidString: function (str) {
+        if (str === null || this.isUndefined(str)) {
+            return false;
+        }
+        if (str.trim() === '') {
+            return false;
+        }
+        return true;
+    },
 };
 
 _.UUID = (function () {
@@ -448,37 +458,9 @@ _.utf8Encode = function (string) {
 };
 
 _.base64Encode = function (data) {
-    var b64 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=';
-    var o1, o2, o3, h1, h2, h3, h4, bits;
-    var i = 0, ac = 0, enc = '', tmpArr = [];
-
-    if (!data) {
-        return data;
-    }
-
-    data = _.utf8Encode(data);
-    do {
-        o1 = data.charCodeAt(i++);
-        o2 = data.charCodeAt(i++);
-        o3 = data.charCodeAt(i++);
-        bits = o1 << 16 | o2 << 8 | o3;
-        h1 = bits >> 18 & 0x3f;
-        h2 = bits >> 12 & 0x3f;
-        h3 = bits >> 6 & 0x3f;
-        h4 = bits & 0x3f;
-        tmpArr[ac++] = b64.charAt(h1) + b64.charAt(h2) + b64.charAt(h3) + b64.charAt(h4);
-    } while (i < data.length);
-
-    enc = tmpArr.join('');
-    switch (data.length % 3) {
-        case 1:
-            enc = enc.slice(0, -2) + '==';
-            break;
-        case 2:
-            enc = enc.slice(0, -1) + '=';
-            break;
-    }
-    return enc;
+    var encoder = new TextEncoder();
+    var utf8EncodedArray = encoder.encode(data);
+    return btoa(String.fromCharCode(...utf8EncodedArray));
 };
 
 _.cookie = {
@@ -619,7 +601,10 @@ _.info = {
             return 'Linux';
         } else if (/CrOS/.test(a)) {
             return 'Chrome OS';
-        } else {
+        } else if (/Harmony/i.test(a)) {
+            return 'HarmonyOS OS';
+        }
+         else {
             return '';
         }
     },
@@ -728,30 +713,93 @@ _.info = {
         }
         return browser;
     },
-    properties: function () {
+    properties: function (disbaleList) {
         var browserInfo = _.info.browser();
-        return _.extend({
-            '#os': _.info.os(),
-            '#lib_version': Config.LIB_VERSION,
-            '#lib': 'js',
-            '#screen_height': screen.height,
-            '#screen_width': screen.width,
-            '#browser': browserInfo.type,
-            '#browser_version': browserInfo.version,
-            '#system_language': _.check.isString(navigator.language) ? navigator.language : 'Value exception',
-            '#ua': _.check.isString(navigator.userAgent) ? navigator.userAgent.toLowerCase() : 'Value exception',
-            '#utm': _.getUtm()
-        });
+        if (_.check.isArray(disbaleList) && disbaleList.length > 0) {
+            var presetProperties = {};
+            if (!disbaleList.includes('#os')) {
+                presetProperties['#os'] = _.info.os();
+            }
+            if (!disbaleList.includes('#lib_version')) {
+                presetProperties['#lib_version'] = Config.LIB_VERSION;
+            }
+            if (!disbaleList.includes('#lib')) {
+                presetProperties['#lib'] = 'js';
+            }
+            if (!disbaleList.includes('#screen_height')) {
+                presetProperties['#screen_height'] = screen.height;
+            }
+            if (!disbaleList.includes('#screen_width')) {
+                presetProperties['#screen_width'] = screen.width;
+            }
+            if (!disbaleList.includes('#browser')) {
+                presetProperties['#browser'] = browserInfo.type;
+            }
+            if (!disbaleList.includes('#browser_version')) {
+                presetProperties['#browser_version'] = browserInfo.version;
+            }
+            if (!disbaleList.includes('#system_language')) {
+                presetProperties['#system_language'] = _.check.isString(navigator.language) ? navigator.language : 'Value exception';
+            }
+            if (!disbaleList.includes('#ua')) {
+                presetProperties['#ua'] = _.check.isString(navigator.userAgent) ? navigator.userAgent.toLowerCase() : 'Value exception';
+            }
+            if (!disbaleList.includes('#utm')) {
+                presetProperties['#utm'] = _.getUtm();
+            }
+            return presetProperties;
+        } else {
+            return _.extend({
+                '#os': _.info.os(),
+                '#lib_version': Config.LIB_VERSION,
+                '#lib': 'js',
+                '#screen_height': screen.height,
+                '#screen_width': screen.width,
+                '#browser': browserInfo.type,
+                '#browser_version': browserInfo.version,
+                '#system_language': _.check.isString(navigator.language) ? navigator.language : 'Value exception',
+                '#ua': _.check.isString(navigator.userAgent) ? navigator.userAgent.toLowerCase() : 'Value exception',
+                '#utm': _.getUtm()
+            });
+        }
     },
-    pageProperties: function () {
+    pageProperties: function (disbaleList) {
         var referrer = _.getReferrer();
-        return _.stripEmptyProperties({
-            '#referrer': referrer,
-            '#referrer_host': referrer ? _.url('hostname', referrer) : referrer,
-            '#url': location.href,
-            '#url_path': location.pathname,
-            '#title': document.title
-        });
+        if (_.check.isArray(disbaleList) && disbaleList.length > 0) {
+            var presetProperties = {};
+            if (!disbaleList.includes('#referrer')) {
+                presetProperties['#referrer'] = referrer;
+            }
+            if (!disbaleList.includes('#referrer_host')) {
+                presetProperties['#referrer_host'] = referrer ? _.url('hostname', referrer) : referrer;
+            }
+            if (!disbaleList.includes('#url')) {
+                presetProperties['#url'] = location.href;
+            }
+            if (!disbaleList.includes('#url_path')) {
+                presetProperties['#url_path'] = location.pathname;
+            }
+            if (!disbaleList.includes('#title')) {
+                presetProperties['#title'] = document.title;
+            }
+            return presetProperties;
+        }else{
+            return _.stripEmptyProperties({
+                '#referrer': referrer,
+                '#referrer_host': referrer ? _.url('hostname', referrer) : referrer,
+                '#url': location.href,
+                '#url_path': location.pathname,
+                '#title': document.title
+            });
+        }
+    }
+};
+
+_.isDisableProperties = function (disableList, property) {
+    if (_.check.isArray(disableList)) {
+        return disableList.includes(property);
+    } else {
+        return false;
     }
 };
 
@@ -1144,6 +1192,28 @@ _.URL = function (url) {
     }
     return result;
 };
+_.isFunction = function(arg){
+    if (!arg) {
+        return false;
+    }
+    var type = Object.prototype.toString.call(arg);
+    return type === '[object Function]' || type === '[object AsyncFunction]';
+};
+_.isDebug = function (mode) {
+    return mode === 'debug' || mode === 'debug_only';
+};
+_.isDebugOnly = function (mode) {
+    return mode === 'debug_only';
+};
+
+_.getCurrentTimeStamp = function () {
+    return Date.now();
+};
+
+_.getCurrentDate = function () {
+    return new Date(Date.now());
+};
+
 class Log {
     static i() {
         if (!this.showLog) {
@@ -1154,9 +1224,15 @@ class Log {
         }
         if (typeof console === 'object' && console.log) {
             try {
+                if (Log.listener) {
+                    Log.listener(arguments[0]);
+                }
                 return console.log.apply(console, arguments);
             }
             catch (e) {
+                if (Log.listener) {
+                    Log.listener(arguments[0]);
+                }
                 console.log(arguments[0]);
             }
         }
@@ -1177,6 +1253,25 @@ class Log {
             }
             catch (e) {
                 console.warn(arguments[0]);
+            }
+        }
+    }
+
+    static e() {
+        if (!this.showLog) {
+            return false;
+        }
+
+        if (this.showLog === true || this.showLog === 'string') {
+            arguments[0] = _.formatJsonString(arguments[0]);
+        }
+
+        if (typeof console === 'object' && console.error) {
+            try {
+                return console.error.apply(console, arguments);
+            }
+            catch (e) {
+                console.error(arguments[0]);
             }
         }
     }

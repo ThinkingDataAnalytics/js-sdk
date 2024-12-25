@@ -30,7 +30,9 @@ var DEFAULT_CONFIG = {
     strict: false, // invalid data will be post to server by default.
     tryCount: 3,
     enableCalibrationTime: false,
-    imgUseCrossorigin: false
+    imgUseCrossorigin: false,
+    disablePresetProperties:[],
+    disableEventList:[]
 };
 
 var ThinkingDataPersistence = function (param) {
@@ -125,7 +127,9 @@ ThinkingDataPersistence.prototype.getOptTracking = function () {
 };
 
 ThinkingDataPersistence.prototype.setDistinctId = function (distinctId) {
-    this._set('distinct_id', distinctId);
+    if (_.check.isValidString(distinctId)) {
+        this._set('distinct_id', distinctId);
+    }
 };
 
 ThinkingDataPersistence.prototype.getAccountId = function () {
@@ -133,7 +137,9 @@ ThinkingDataPersistence.prototype.getAccountId = function () {
 };
 
 ThinkingDataPersistence.prototype.setAccountId = function (accountId) {
-    this._set('account_id', accountId);
+    if (_.check.isValidString(accountId)) {
+        this._set('account_id', accountId);
+    }
 };
 
 ThinkingDataPersistence.prototype.getDeviceId = function () {
@@ -242,8 +248,11 @@ TDAnalytics.prototype.trackLink = function (dom, eventName, eventProperties) {
 
         _.each(elements, (element) => {
             if (element !== null) {
-                var properties = _.extend({}, _.info.pageProperties(), eventProperties);
-                properties['#element_type'] = element.nodeName.toLowerCase();
+                var disbaleList = this._getConfig('disablePresetProperties');
+                var properties = _.extend({}, _.info.pageProperties(disbaleList), eventProperties);
+                if(!_.isDisableProperties(disbaleList,'#element_type')){
+                    properties['#element_type'] = element.nodeName.toLowerCase();
+                }
                 if (_.check.isUndefined(properties['name'])) {
                     properties['name'] = element.getAttribute('td-name') || element.innerHTML || element.value || 'Unable to get Identify';
                 }
@@ -287,15 +296,25 @@ TDAnalytics.prototype.getPageProperty = function () {
  * @returns preset properties
  */
 TDAnalytics.prototype.getPresetProperties = function () {
-    var properties = _.info.properties();
+    var properties = _.info.properties(this._getConfig('disablePresetProperties'));
     var presetProperties = {};
-    presetProperties.os = properties['#os'];
-    presetProperties.screenWidth = properties['#screen_width'];
-    presetProperties.screenHeight = properties['#screen_height'];
-    presetProperties.browser = properties['#browser'];
-    presetProperties.browserVersion = properties['#browser_version'];
+    if (properties['#os']) {
+        presetProperties.os = properties['#os'];
+    }
+    if (properties['#screen_width']) {
+        presetProperties.screenWidth = properties['#screen_width'];
+    }
+    if (properties['#screen_height']) {
+        presetProperties.screenHeight = properties['#screen_height'];
+    }
+    if (properties['#browser']) {
+        presetProperties.browser = properties['#browser'];
+    }
+    if (properties['#browser_version']) {
+        presetProperties.browserVersion = properties['#browser_version'];
+    }
     presetProperties.deviceId = this.getDeviceId();
-    let zoneOffset = 0 - (new Date().getTimezoneOffset() / 60.0);
+    let zoneOffset = 0 - (_.getCurrentDate().getTimezoneOffset() / 60.0);
     if (this._getConfig('zoneOffset')) {
         zoneOffset = this._getConfig('zoneOffset');
     }
@@ -331,6 +350,10 @@ TDAnalytics.prototype.login = function (accountId) {
         if (accountId !== currentAccountId) {
             this['persistence'].setAccountId(accountId);
             Log.i('[ThinkingData] Info: Login SDK, AccountId = ' + accountId);
+            this.notifyAllObserver('onAccountChanged', {
+                accountId: accountId,
+                distinctId: this.getDistinctId()
+            });
         }
     } else {
         Log.e('The parameters of the login API must be strings');
@@ -351,6 +374,10 @@ TDAnalytics.prototype.logout = function (isChangeId) {
     }
     this['persistence'].setAccountId('');
     Log.i('[ThinkingData] Info: Logout SDK');
+    this.notifyAllObserver('onAccountChanged', {
+        accountId: '',
+        distinctId: this.getDistinctId()
+    });
 };
 
 /**
@@ -524,6 +551,10 @@ TDAnalytics.prototype.userDelete = function (callback) {
     }, callback);
 };
 
+TDAnalytics.prototype.setLogPrintListener = function (listener) {
+    Log.listener = listener;
+};
+
 TDAnalytics.prototype._sendRequest = function (eventData, callback, tryBeacon) {
     // var timeCalibration = 6;
     // if (this._getConfig('enableCalibrationTime')) {
@@ -533,7 +564,7 @@ TDAnalytics.prototype._sendRequest = function (eventData, callback, tryBeacon) {
     //         timeCalibration = 3;
     //     }
     // }
-    var time = _.check.isUndefined(eventData.time) || !_.check.isDate(eventData.time) ? new Date() : eventData.time;
+    var time = _.check.isUndefined(eventData.time) || !_.check.isDate(eventData.time) ? _.getCurrentDate() : eventData.time;
     var data = {
         data: [{
             '#type': eventData.type,
@@ -559,13 +590,12 @@ TDAnalytics.prototype._sendRequest = function (eventData, callback, tryBeacon) {
         data.data[0]['properties'] = _.extend({}, {
             '#device_id': this['persistence'].getDeviceId(),
             '#zone_offset': zoneOffset,
-        }, _.info.properties(), this.getSuperProperties(), this.dynamicProperties ? this.dynamicProperties() : {}, this.getPageProperty()
+        }, _.info.properties(this._getConfig('disablePresetProperties')), this.getSuperProperties(), this.dynamicProperties ? this.dynamicProperties() : {}, this.getPageProperty()
         );
 
         var startTimestamp = this['persistence'].removeEventTimer(eventData.event);
         if (!_.check.isUndefined(startTimestamp)) {
-            var durationMillisecond = new Date()
-                .getTime() - startTimestamp;
+            var durationMillisecond = _.getCurrentTimeStamp() - startTimestamp;
             var d = parseFloat((durationMillisecond / 1000).toFixed(3));
             if (d > 24 * 60 * 60) {
                 d = 24 * 60 * 60;
@@ -588,8 +618,11 @@ TDAnalytics.prototype._sendRequest = function (eventData, callback, tryBeacon) {
         data.data[0] = _.generateEncryptyData(data.data[0], this._getConfig('secretKey'));
     }
     data['#app_id'] = this._getConfig('appId');
-    //data['#flush_time'] = new Date().getTime();
-    data['#flush_time'] = _.formatTimeZone(new Date(), this._getConfig('zoneOffset')).getTime();
+    data['#flush_time'] = _.formatTimeZone(_.getCurrentDate(), this._getConfig('zoneOffset')).getTime();
+    this.notifyAllObserver('onDataEnqueue', {
+        appId: this._getConfig('appId'),
+        event: data.data[0]
+    });
     Log.i('[ThinkingData] Info: Enqueue data : ');
     Log.i(data);
 
@@ -613,7 +646,10 @@ TDAnalytics.prototype._sendRequest = function (eventData, callback, tryBeacon) {
             window.ThinkingData_APP_Flutter_Bridge.postMessage(JSON.stringify(data));
             return;
         } else if (window.ReactNativeWebView && window.ThinkingData_APP_ReactNative_Bridge) {
-            window.ThinkingData_APP_ReactNative_Bridge(JSON.stringify({type: 'tdanalytics_reactnative_sdk', event: data}));
+            window.ThinkingData_APP_ReactNative_Bridge(JSON.stringify({ type: 'tdanalytics_reactnative_sdk', event: data }));
+            return;
+        } else if (window.taHarmonyPort) {
+            window.taHarmonyPort.postMessage(JSON.stringify(data));
             return;
         }
     }
@@ -622,16 +658,16 @@ TDAnalytics.prototype._sendRequest = function (eventData, callback, tryBeacon) {
         data.data[0]['#uuid'] = _.UUIDv4();
     }
 
-    if (this.batchConsumer && !this._isDebug() && !tryBeacon) {
+    if (this.batchConsumer && !(this._isDebug() || _.isDebug(eventData.debugMode)) && !tryBeacon) {
         this.batchConsumer.add(data.data[0]);
         return;
     }
 
     var urlData;
-    if (this._isDebug()) {
+    if (this._isDebug() || _.isDebug(eventData.debugMode)) {
         urlData = '&data=' + _.encodeURIComponent(JSON.stringify(data.data[0])) + '&source=client&deviceId=' + this.getDeviceId()
             + '&appid=' + this._getConfig('appId') + '&version=' + Config.LIB_VERSION;
-        if (this._getConfig('mode') === 'debug_only') {
+        if (this._getConfig('mode') === 'debug_only' || _.isDebugOnly(eventData.debugMode)) {
             urlData = urlData + '&dryRun=1';
         }
     } else {
@@ -659,11 +695,14 @@ TDAnalytics.prototype._sendRequest = function (eventData, callback, tryBeacon) {
         navigator.sendBeacon(this._getConfig('serverUrl'), formData);
         return;
     }
-
+    var sUrl = this._getConfig('serverUrl');
+    if (_.isDebug(eventData.debugMode)) {
+        sUrl = this._getConfig('originalUrl') + '/data_debug';
+    }
     if (this._getConfig('send_method') === 'ajax') {
-        new AjaxTask(urlData, this._getConfig('serverUrl'), this._getConfig('tryCount'), callback, null,this._isDebug(),this._getConfig('dataSendTimeout')).run();
+        new AjaxTask(urlData, sUrl, this._getConfig('tryCount'), callback, null, this._isDebug(), this._getConfig('dataSendTimeout')).run();
     } else {
-        this._sendRequestWithImage(urlData, callback);
+        this._sendRequestWithImage(sUrl, urlData, callback);
     }
 };
 
@@ -694,10 +733,10 @@ function BatchConsumer(config) {
             this.batchList = storageList;
         }
         var prefix = this.config['persistencePrefix'];
-        var tabKey = prefix+tabStoragePrefix + this.config.appId;
+        var tabKey = prefix + tabStoragePrefix + this.config.appId;
         var tabs = JSON.parse(_.localStorage.get(tabKey));
         if (_.check.isArray(tabs)) {
-            for(var i = 0;i<tabs.length;i++){
+            for (var i = 0; i < tabs.length; i++) {
                 var oldItem = JSON.parse(_.localStorage.get(tabs[i]));
                 console.log(oldItem);
                 this.batchList.push(oldItem);
@@ -757,11 +796,11 @@ BatchConsumer.prototype = {
 
 
     batchSend: function () {
-        var nowDate = new Date();
-        if (this.dataSendTimeStamp !== 0 && nowDate.getTime() - this.dataSendTimeStamp < (this.config.dataSendTimeout + 500)) {
+        var nowTimeStamp = _.getCurrentTimeStamp();
+        if (this.dataSendTimeStamp !== 0 && nowTimeStamp - this.dataSendTimeStamp < (this.config.dataSendTimeout + 500)) {
             return;
         }
-        this.dataSendTimeStamp = nowDate.getTime();
+        this.dataSendTimeStamp = nowTimeStamp;
         var sendData;
         if (this.batchList.length > 50) {
             sendData = this.batchList.slice(0, 50);
@@ -774,7 +813,7 @@ BatchConsumer.prototype = {
             var postData = {};
             postData['data'] = sendData;
             postData['#app_id'] = this.config['appId'];
-            postData['#flush_time'] = new Date().getTime();
+            postData['#flush_time'] = _.getCurrentTimeStamp();
             Log.i('[ThinkingData] Debug: Send event, Request =');
             Log.i(postData);
             var pData = JSON.stringify(postData);
@@ -800,7 +839,7 @@ BatchConsumer.prototype = {
         this.batchList.splice(0, len);
         this.dataHasChange = true;
         this.batchWrite();
-        if(this.batchList.length > 0){
+        if (this.batchList.length > 0) {
             this.flush();
         }
     }
@@ -810,7 +849,7 @@ class AjaxTask {
     constructor(data, serverUrl, tryCount, success, error, isDebug, dataSendTimeout) {
         this.data = data;
         this.serverUrl = serverUrl;
-        this.tryCount = tryCount == undefined || tryCount == null ? 3 : tryCount;
+        this.tryCount = tryCount === undefined || tryCount === null ? 3 : tryCount;
         this.success = success;
         this.error = error;
         this.isDebug = isDebug;
@@ -852,7 +891,7 @@ class AjaxTask {
             try {
                 if (xhr.readyState === 4) {
                     if (xhr.status >= 100 && xhr.status < 200) {
-                        Log.i("Ignoring temporary status code 1xx.");
+                        Log.i('Ignoring temporary status code 1xx.');
                     } else if ((xhr.status >= 200 && xhr.status < 300) || xhr.status === 304) {
                         task.success && task.success();
                         if (errorTimer) {
@@ -895,7 +934,7 @@ TDAnalytics.prototype._isDebug = function () {
     return this._getConfig('mode') === 'debug' || this._getConfig('mode') === 'debug_only';
 };
 
-TDAnalytics.prototype._sendRequestWithImage = function (data, callback) {
+TDAnalytics.prototype._sendRequestWithImage = function (srl, data, callback) {
     function callAndDelete(img) {
         if (img && !img.hasCalled) {
             img.hasCalled = true;
@@ -903,8 +942,7 @@ TDAnalytics.prototype._sendRequestWithImage = function (data, callback) {
         }
     }
 
-    var url = (this._getConfig('serverUrl')
-        .indexOf('?') !== -1) ? this._getConfig('serverUrl') : this._getConfig('serverUrl') + '?';
+    var url = (srl.indexOf('?') !== -1) ? srl : srl + '?';
     var src = url + data;
     var img = document.createElement('img');
 
@@ -949,6 +987,10 @@ TDAnalytics.prototype.track = function (eventName, eventProperties, eventTime, c
         }, callback);
         return;
     }
+    var disableEventList = this._getConfig('disableEventList');
+    if (this._getConfig('disableEventList') !== null && _.check.isArray(disableEventList) && disableEventList.includes(eventName)) {
+        return;
+    }
     if ((PropertyChecker.event(eventName) && PropertyChecker.properties(eventProperties)) || !this._getConfig('strict')) {
         this._sendRequest({
             type: 'track',
@@ -957,6 +999,18 @@ TDAnalytics.prototype.track = function (eventName, eventProperties, eventTime, c
             properties: eventProperties
         }, callback);
     }
+};
+
+TDAnalytics.prototype.trackInternal = function (options) {
+    if (!this._isCollectData()) {
+        return;
+    }
+    this._sendRequest({
+        type: 'track',
+        event: options.eventName,
+        properties: options.properties,
+        debugMode: options.debugMode
+    });
 };
 
 /**
@@ -1104,6 +1158,10 @@ TDAnalytics.prototype.setDistinctId = function (id) {
         if (id !== distinctId) {
             this['persistence'].setDistinctId(id);
             Log.i('[ThinkingData] Info: Setting distinct ID, DistinctId = ' + id);
+            this.notifyAllObserver('onAccountChanged', {
+                accountId: this.getAccountId(),
+                distinctId: id
+            });
         }
     } else {
         Log.e('The parameter of setDistinctId API requires a string');
@@ -1116,6 +1174,27 @@ TDAnalytics.prototype.setDistinctId = function (id) {
  */
 TDAnalytics.prototype.getDistinctId = function () {
     return this['persistence'].getDistinctId();
+};
+
+TDAnalytics.prototype.getAccountId = function () {
+    return this['persistence'].getAccountId();
+};
+
+TDAnalytics.prototype.registerAnalyticsObserver = function (analyticsObserver) {
+    if (!this._isCollectData()) {
+        return;
+    }
+    if (typeof analyticsObserver === 'function') {
+        this.observers.push(analyticsObserver);
+    } else {
+        Log.i('registerAnalyticsObserver parameter must be a function type');
+    }
+};
+
+TDAnalytics.prototype.notifyAllObserver = function (type, obj) {
+    for (let i = 0; i < this.observers.length; i++) {
+        this.observers[i](type, obj);
+    }
 };
 
 /**
@@ -1207,8 +1286,11 @@ TDAnalytics.prototype.timeEvent = function (eventName) {
         Log.w('No event name provided to timeEvent');
         return;
     }
-    this['persistence'].setEventTimer(eventName, new Date()
-        .getTime());
+    this['persistence'].setEventTimer(eventName, _.getCurrentTimeStamp());
+};
+
+TDAnalytics.prototype.autoTrackSinglePage = function () {
+    this['pageLifeCycle'].autoTrackSinglePage();
 };
 
 /**
@@ -1228,7 +1310,7 @@ TDAnalytics.prototype.quick = function (type, properties) {
         this._sendRequest({
             type: 'track',
             event: 'ta_pageview',
-            properties: _.extend(quickProperties, _.info.pageProperties())
+            properties: _.extend(quickProperties, _.info.pageProperties(this._getConfig('disablePresetProperties')))
         });
     } else if (typeof type === 'string' && type === 'siteLinker') {
         siteLinker.init(this, properties);
@@ -1260,11 +1342,17 @@ TDAnalytics.prototype._getConfig = function (propName) {
  * @param {Object} param init config
  */
 TDAnalytics.prototype.init = function (param) {
+    if (_.check.isUndefined(param.appId) || param.appId === '' || param.appId.replace(/\s*/g, '') === '') {
+        return;
+    }
+    if (_.check.isUndefined(param.serverUrl) || param.serverUrl === '' || param.serverUrl.replace(/\s*/g, '') === '') {
+        return;
+    }
     if (_.check.isUndefined(this['config'])) {
         this['config'] = {};
         this.currentProps = this.currentProps || {};
         this._setConfig(_.extend({}, DEFAULT_CONFIG, param));
-
+        this.observers = [];
         this['persistence'] = new ThinkingDataPersistence(this['config']);
         var appId = this._getConfig('appId');
         if (!_.check.isUndefined(appId)) {
@@ -1281,13 +1369,16 @@ TDAnalytics.prototype.init = function (param) {
                 send_method: 'image'
             });
         }
+        this._setConfig({
+            originalUrl: _.url('basic', param.serverUrl.replace(/\s*/g, ''))
+        });
         if (this._isDebug()) {
             this._setConfig({
-                serverUrl: _.url('basic', param.serverUrl) + '/data_debug'
+                serverUrl: this._getConfig('originalUrl') + '/data_debug'
             });
         } else {
             this._setConfig({
-                serverUrl: _.url('basic', param.serverUrl) + '/sync_js'
+                serverUrl: this._getConfig('originalUrl') + '/sync_js'
             });
         }
         //Whether to enable data batch sending
@@ -1295,11 +1386,46 @@ TDAnalytics.prototype.init = function (param) {
             this.batchConsumer = new BatchConsumer(this['config']);
             this.batchConsumer.batchInterval();
         }
-        new PageLifeCycle(this, this._getConfig('autoTrack')).start();
+        this['pageLifeCycle'] = new PageLifeCycle(this, this._getConfig('autoTrack'), this._getConfig('disablePresetProperties'));
+        this['pageLifeCycle'].start();
+        if (this._getConfig('useAppTrack')) {
+            window.addEventListener('message', function (event) {
+                if (event.data === '__ta_init_port__') {
+                    if (event.ports[0] !== null) {
+                        window.taHarmonyPort = event.ports[0];
+                    }
+                }
+            });
+        }
         var m = 'normal';
         if (this.config.mode) {
             m = this.config.mode;
         }
+        var xhr = null;
+        if (window.XMLHttpRequest) {
+            xhr = new XMLHttpRequest();
+        } else {
+            // eslint-disable-next-line no-undef
+            xhr = new ActiveXObject('Microsoft.XMLHTTP');
+        }
+        var configUrl = `${this._getConfig('originalUrl')}/config?appid=${this.config.appId}`;
+        xhr.open('GET', configUrl, true);
+        xhr.onload = () => {
+            if (xhr.status >= 200 && xhr.status < 300) {
+                var configData = JSON.parse(xhr.responseText);
+                Log.i('[ThinkingData] Info: TDAnalytics SDK config data: ');
+                Log.i(configData);
+                this._setConfig({
+                    disableEventList: configData.data.disable_event_list,
+                });
+            } else {
+                Log.e('TDAnalytics SDK config error code: ' + xhr.status);
+            }
+        };
+        xhr.onerror = function() {
+            Log.e('TDAnalytics SDK config network error');
+        };
+        xhr.send();
         Log.i('[ThinkingData] Info: TDAnalytics SDK initialize success, AppId = ' + this.config.appId + ', ServerUrl = ' + this.config.serverUrl + ', Mode = ' + m + ', DeviceId = ' + this.getDeviceId() + ', Lib = js, LibVersion = ' + Config.LIB_VERSION);
     } else {
         Log.i('The ThinkingData libraray has been initialized.');
@@ -1308,7 +1434,7 @@ TDAnalytics.prototype.init = function (param) {
 
 class PageLifeCycle {
 
-    constructor(taLib, config) {
+    constructor(taLib, config,disableList) {
         this.taLib = taLib;
         if (_.paramType(config) === 'Object' && _.paramType(config.pageShow) === 'Boolean') {
             this.autoPageShow = config.pageShow;
@@ -1320,25 +1446,15 @@ class PageLifeCycle {
         } else {
             this.autoPageHide = false;
         }
+        this.disableList = disableList;
+        this.lastPageUrl = '';
+        this.lastPagePath = '';
+        this.title = '';
+        this.isFirstRouter = true;
     }
 
     start() {
         var page = this;
-        // if ('onpageShow' in window) {
-        //     _.addEvent(window, 'pageShow', function () {
-        //         page.trackPageShowEvent();
-        //     });
-        //     _.addEvent(window, 'pagehide', function () {
-        //         //page.trackPageHideEventOnClose();
-        //     });
-        // } else {
-        //     _.addEvent(window, 'load', function () {
-        //         page.trackPageShowEvent();
-        //     });
-        //     _.addEvent(window, 'beforeunload', function () {
-        //         //page.trackPageHideEventOnClose();
-        //     });
-        // }
 
         page.trackPageShowEvent();
 
@@ -1353,26 +1469,56 @@ class PageLifeCycle {
                 }
             });
         }
+    }
 
+    getPageProperties() {
+        var properties = _.info.pageProperties(this.disableList);
+        if (properties['#url'] != null) {
+            properties['#url'] = this.lastPageUrl;
+        }
+        if (properties['#url_path'] != null) {
+            properties['#url_path'] = this.lastPagePath;
+        }
+        if (properties['#title'] != null) {
+            properties['#title'] = this.title;
+        }
+        return properties;
+    }
+
+    autoTrackSinglePage() {
+        if (this.isFirstRouter) {
+            this.isFirstRouter = false;
+            return;
+        }
+        if (this.autoPageHide) {
+            this.taLib.trackWithBeacon('ta_page_hide', this.getPageProperties());
+        }
+        setTimeout(()=> {
+            this.trackPageShowEvent();
+        }, 0);
     }
 
     trackPageShowEvent() {
+        this.isFirstRouter = false;
         if (this.autoPageShow) {
-            this.taLib.track('ta_page_show', _.info.pageProperties());
+            this.taLib.track('ta_page_show', _.info.pageProperties(this.disableList));
+            this.lastPageUrl = location.href;
+            this.lastPagePath = location.pathname;
+            this.title = document.title;
         }
         this.taLib.timeEvent('ta_page_hide');
     }
 
     trackPageHideEvent() {
         if (this.autoPageHide) {
-            this.taLib.trackWithBeacon('ta_page_hide', _.info.pageProperties());
+            this.taLib.trackWithBeacon('ta_page_hide', _.info.pageProperties(this.disableList));
         }
     }
 
     trackPageHideEventOnClose() {
         //If ta_page_hide is sent when the page is hidden, it does not need to be sent at this time
         if (this.autoPageHide && this.isPageShow) {
-            this.taLib.trackWithBeacon('ta_page_hide', _.info.pageProperties());
+            this.taLib.trackWithBeacon('ta_page_hide', _.info.pageProperties(this.disableList));
         }
     }
 
