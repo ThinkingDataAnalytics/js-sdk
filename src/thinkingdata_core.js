@@ -137,9 +137,7 @@ ThinkingDataPersistence.prototype.getAccountId = function () {
 };
 
 ThinkingDataPersistence.prototype.setAccountId = function (accountId) {
-    if (_.check.isValidString(accountId)) {
-        this._set('account_id', accountId);
-    }
+    this._set('account_id', accountId);
 };
 
 ThinkingDataPersistence.prototype.getDeviceId = function () {
@@ -197,7 +195,15 @@ ThinkingDataPersistence.prototype._set = function (name, value) {
 /**
  * @class
  */
-var TDAnalytics = function () { };
+var TDAnalytics = function () {
+    window.addEventListener('message', function (event) {
+        if (event.data === '__ta_init_port__') {
+            if (event.ports[0] !== null) {
+                window.taHarmonyPort = event.ports[0];
+            }
+        }
+    });
+ };
 
 /**
  * Automatically upload the click event of the page element
@@ -1388,15 +1394,6 @@ TDAnalytics.prototype.init = function (param) {
         }
         this['pageLifeCycle'] = new PageLifeCycle(this, this._getConfig('autoTrack'), this._getConfig('disablePresetProperties'));
         this['pageLifeCycle'].start();
-        if (this._getConfig('useAppTrack')) {
-            window.addEventListener('message', function (event) {
-                if (event.data === '__ta_init_port__') {
-                    if (event.ports[0] !== null) {
-                        window.taHarmonyPort = event.ports[0];
-                    }
-                }
-            });
-        }
         var m = 'normal';
         if (this.config.mode) {
             m = this.config.mode;
