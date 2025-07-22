@@ -31,8 +31,8 @@ var DEFAULT_CONFIG = {
     tryCount: 3,
     enableCalibrationTime: false,
     imgUseCrossorigin: false,
-    disablePresetProperties:[],
-    disableEventList:[]
+    disablePresetProperties: [],
+    disableEventList: []
 };
 
 var ThinkingDataPersistence = function (param) {
@@ -203,7 +203,7 @@ var TDAnalytics = function () {
             }
         }
     });
- };
+};
 
 /**
  * Automatically upload the click event of the page element
@@ -256,7 +256,7 @@ TDAnalytics.prototype.trackLink = function (dom, eventName, eventProperties) {
             if (element !== null) {
                 var disbaleList = this._getConfig('disablePresetProperties');
                 var properties = _.extend({}, _.info.pageProperties(disbaleList), eventProperties);
-                if(!_.isDisableProperties(disbaleList,'#element_type')){
+                if (!_.isDisableProperties(disbaleList, '#element_type')) {
                     properties['#element_type'] = element.nodeName.toLowerCase();
                 }
                 if (_.check.isUndefined(properties['name'])) {
@@ -1419,7 +1419,7 @@ TDAnalytics.prototype.init = function (param) {
                 Log.e('TDAnalytics SDK config error code: ' + xhr.status);
             }
         };
-        xhr.onerror = function() {
+        xhr.onerror = function () {
             Log.e('TDAnalytics SDK config network error');
         };
         xhr.send();
@@ -1431,7 +1431,7 @@ TDAnalytics.prototype.init = function (param) {
 
 class PageLifeCycle {
 
-    constructor(taLib, config,disableList) {
+    constructor(taLib, config, disableList) {
         this.taLib = taLib;
         if (_.paramType(config) === 'Object' && _.paramType(config.pageShow) === 'Boolean') {
             this.autoPageShow = config.pageShow;
@@ -1443,6 +1443,8 @@ class PageLifeCycle {
         } else {
             this.autoPageHide = false;
         }
+        this.staticProperties = config.properties;
+        this.callback = config.callback;
         this.disableList = disableList;
         this.lastPageUrl = '';
         this.lastPagePath = '';
@@ -1470,13 +1472,13 @@ class PageLifeCycle {
 
     getPageProperties() {
         var properties = _.info.pageProperties(this.disableList);
-        if (properties['#url'] != null) {
+        if (properties['#url'] !== null) {
             properties['#url'] = this.lastPageUrl;
         }
-        if (properties['#url_path'] != null) {
+        if (properties['#url_path'] !== null) {
             properties['#url_path'] = this.lastPagePath;
         }
-        if (properties['#title'] != null) {
+        if (properties['#title'] !== null) {
             properties['#title'] = this.title;
         }
         return properties;
@@ -1488,9 +1490,9 @@ class PageLifeCycle {
             return;
         }
         if (this.autoPageHide) {
-            this.taLib.trackWithBeacon('ta_page_hide', this.getPageProperties());
+            this.taLib.trackWithBeacon('ta_page_hide', _.extend(this.getPageProperties(), this.staticProperties, _.isFunction(this.callback) ? this.callback('pageHide') : {}));
         }
-        setTimeout(()=> {
+        setTimeout(() => {
             this.trackPageShowEvent();
         }, 0);
     }
@@ -1498,7 +1500,7 @@ class PageLifeCycle {
     trackPageShowEvent() {
         this.isFirstRouter = false;
         if (this.autoPageShow) {
-            this.taLib.track('ta_page_show', _.info.pageProperties(this.disableList));
+            this.taLib.track('ta_page_show', _.extend(_.info.pageProperties(this.disableList), this.staticProperties, _.isFunction(this.callback) ? this.callback('pageShow') : {}));
             this.lastPageUrl = location.href;
             this.lastPagePath = location.pathname;
             this.title = document.title;
@@ -1508,14 +1510,14 @@ class PageLifeCycle {
 
     trackPageHideEvent() {
         if (this.autoPageHide) {
-            this.taLib.trackWithBeacon('ta_page_hide', _.info.pageProperties(this.disableList));
+            this.taLib.trackWithBeacon('ta_page_hide', _.extend(_.info.pageProperties(this.disableList), this.staticProperties, _.isFunction(this.callback) ? this.callback('pageHide') : {}));
         }
     }
 
     trackPageHideEventOnClose() {
         //If ta_page_hide is sent when the page is hidden, it does not need to be sent at this time
         if (this.autoPageHide && this.isPageShow) {
-            this.taLib.trackWithBeacon('ta_page_hide', _.info.pageProperties(this.disableList));
+            this.taLib.trackWithBeacon('ta_page_hide', _.extend(_.info.pageProperties(this.disableList), this.staticProperties, _.isFunction(this.callback) ? this.callback('pageHide') : {}));
         }
     }
 

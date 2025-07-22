@@ -604,7 +604,7 @@ _.info = {
         } else if (/Harmony/i.test(a)) {
             return 'HarmonyOS OS';
         }
-         else {
+        else {
             return '';
         }
     },
@@ -782,18 +782,32 @@ _.info = {
             if (!disbaleList.includes('#title')) {
                 presetProperties['#title'] = document.title;
             }
+            // if (!disbaleList.includes('#start_reason')) {
+            //     presetProperties['#start_reason'] = _.getStartReason();
+            // }
             return presetProperties;
-        }else{
+        } else {
             return _.stripEmptyProperties({
                 '#referrer': referrer,
                 '#referrer_host': referrer ? _.url('hostname', referrer) : referrer,
                 '#url': location.href,
                 '#url_path': location.pathname,
-                '#title': document.title
+                '#title': document.title,
+                // '#start_reason': _.getStartReason()
             });
         }
     }
 };
+
+// _.getStartReason = function () {
+//     let url = location.href;
+//     const searchParams = new URLSearchParams(url.split('?')[1]);
+//     const paramsObj = {};
+//     searchParams.forEach((value, key) => {
+//         paramsObj[key] = value;
+//     });
+//     return JSON.stringify(paramsObj);
+// };
 
 _.isDisableProperties = function (disableList, property) {
     if (_.check.isArray(disableList)) {
@@ -1192,7 +1206,7 @@ _.URL = function (url) {
     }
     return result;
 };
-_.isFunction = function(arg){
+_.isFunction = function (arg) {
     if (!arg) {
         return false;
     }
