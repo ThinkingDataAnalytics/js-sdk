@@ -1443,8 +1443,10 @@ class PageLifeCycle {
         } else {
             this.autoPageHide = false;
         }
-        this.staticProperties = config.properties;
-        this.callback = config.callback;
+        if (_.paramType(config) === 'Object') {
+            this.staticProperties = config.properties;
+            this.callback = config.callback;
+        }
         this.disableList = disableList;
         this.lastPageUrl = '';
         this.lastPagePath = '';
