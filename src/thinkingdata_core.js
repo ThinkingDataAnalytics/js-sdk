@@ -629,8 +629,6 @@ TDAnalytics.prototype._sendRequest = function (eventData, callback, tryBeacon) {
         appId: this._getConfig('appId'),
         event: data.data[0]
     });
-    Log.i('[ThinkingData] Info: Enqueue data : ');
-    Log.i(data);
 
     // Send data via native SDK
     if (this._getConfig('useAppTrack')) {
@@ -660,14 +658,18 @@ TDAnalytics.prototype._sendRequest = function (eventData, callback, tryBeacon) {
         }
     }
 
-    if (tryBeacon) {
-        data.data[0]['#uuid'] = _.UUIDv4();
-    }
+    // if (tryBeacon) {
+    //     data.data[0]['#uuid'] = _.UUIDv4();
+    // }
 
     if (this.batchConsumer && !(this._isDebug() || _.isDebug(eventData.debugMode)) && !tryBeacon) {
+        data.data[0]['#uuid'] = _.UUIDv4();
         this.batchConsumer.add(data.data[0]);
         return;
     }
+
+    Log.i('[ThinkingData] Info: Post data : ');
+    Log.i(data);
 
     var urlData;
     if (this._isDebug() || _.isDebug(eventData.debugMode)) {
@@ -790,6 +792,8 @@ BatchConsumer.prototype = {
 
 
     add: function (data) {
+        Log.i('[ThinkingData] Info: Enqueue data : ');
+        Log.i(data);
         if (this.batchList.length > this.maxLimit) {
             this.batchList.shift();
         }
@@ -1392,6 +1396,15 @@ TDAnalytics.prototype.init = function (param) {
             this.batchConsumer = new BatchConsumer(this['config']);
             this.batchConsumer.batchInterval();
         }
+        if(this._getConfig('accountId')){
+            this.login(this._getConfig('accountId'));
+        }
+        if(this._getConfig('distinctId')){
+            this.setDistinctId(this._getConfig('distinctId'));
+        }
+        if(this._getConfig('superProperties')){
+            this.setSuperProperties(this._getConfig('superProperties'));
+        }
         this['pageLifeCycle'] = new PageLifeCycle(this, this._getConfig('autoTrack'), this._getConfig('disablePresetProperties'));
         this['pageLifeCycle'].start();
         var m = 'normal';
@@ -1443,10 +1456,8 @@ class PageLifeCycle {
         } else {
             this.autoPageHide = false;
         }
-        if (_.paramType(config) === 'Object') {
-            this.staticProperties = config.properties;
-            this.callback = config.callback;
-        }
+        this.staticProperties = config.properties;
+        this.callback = config.callback;
         this.disableList = disableList;
         this.lastPageUrl = '';
         this.lastPagePath = '';

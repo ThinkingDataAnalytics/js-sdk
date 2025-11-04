@@ -223,10 +223,14 @@ _.UUID = (function () {
 })();
 
 _.UUIDv4 = function () {
-    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
-        var r = Math.random() * 16 | 0,
-            // eslint-disable-next-line eqeqeq
-            v = c == 'x' ? r : (r & 0x3 | 0x8);
+    //使用浏览器自带的 uuid 不重复
+    if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+        return crypto.randomUUID();
+    }
+    // 不支持时使用自定义随机数方案
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+        const r = Math.random() * 16 | 0;
+        const v = c === 'x' ? r : (r & 0x3 | 0x8);
         return v.toString(16);
     });
 };

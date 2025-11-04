@@ -1,0 +1,9 @@
+{
+  "version": "v1",
+  "packages": {
+    "thinkingdata-browser": {
+      "signature": "29dbf870c5ec34857a7189f9c06a6e2a",
+      "file": true
+    }
+  }
+}

@@ -1,0 +1,61 @@
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="referrer" content="origin">
+    <title>JS Web Test</title>
+    <!-- <script src="../../release/thinkingdata.umd.min.js"></script> -->
+    <script src="./thinkingdata.umd.min.js"></script>
+    <script>
+        var config = {
+            appId: '381f8bbad66c41a18923089321a1ba6f',
+            serverUrl: 'https://receiver-ta-preview.thinkingdata.cn',
+            send_method: 'ajax',
+            // batch: true,
+            // batch: {
+            //     size: 40,
+            //     interval: 6000,
+            //     storageLimit: 100,
+            // },
+            autoTrack: {
+                pageShow: true,
+                pageHide: true,
+                properties: { // 自动采集自定义属性
+                    staticKey: 'staticValue'
+                },
+                callback: (eventType) => { // 自动采集回调
+                    if (eventType === 'pageShow') {
+                        return { appShowKey: 'appShowValue' };
+                    } else if (eventType === 'pageHide') {
+                        return { appHideKey: 'appHideValue' };
+                    } else {
+                        return {};
+                    }
+                }
+            },
+            //mode: 'debug',
+            accountId: 'llb',
+            distinctId: 'dis_a',
+            superProperties: {
+                super_name: 'jack',
+                super_age: 10
+            },
+            enableCalibrationTime: true,
+            imgUseCrossorigin: true
+        };
+        window.ta = thinkingdata;
+        ta.init(config);
+        function sendTestEvent() {
+            for (var i = 0; i < 1; i++) {
+                ta.track('test_event', {
+                    "country": "韩国",
+                    "country_code": "JP",
+                });
+            }
+        }
+    </script>
+</head>
+
+<body>
+    <button onclick="sendTestEvent()">发送测试事件</button>
+</body>

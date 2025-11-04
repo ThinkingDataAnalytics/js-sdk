@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <!-- https://developer.mozilla.org/zh-CN/docs/Web/HTTP/CSP -->
+    <!-- <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'"> -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self' https://receiver-ta-preview.thinkingdata.cn; script-src 'self' 'unsafe-inline'">
+  
+    <script src="../../release/thinkingdata.umd.min.js"></script>
+    <title>你好!</title>
+  </head>
+  <script>
+    var config = {
+            _name:'tt',
+            appId: '381f8bbad66c41a18923089321a1ba6f',
+            serverUrl: 'https://receiver-ta-preview.thinkingdata.cn',
+            send_method: 'ajax',
+            autoTrack: {
+                pageShow: true,
+                pageHide: true,
+            },
+            batch: true,
+        };
+        window.ta = thinkingdata;
+
+        ta.init(config);
+</script>
+  <body>
+    <h1>你好!</h1>
+    我们正在使用12 Node.js <span id="node-version"></span>,
+    Chromium <span id="chrome-version"></span>,
+    和 Electron <span id="electron-version"></span>.
+  </body>
+</html>

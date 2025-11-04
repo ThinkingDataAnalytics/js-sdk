@@ -1,0 +1,21 @@
+{
+  "name": "cn.thinkingdata.demo",
+  "version": "1.0.0",
+  "description": "1",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "repository": {
+    "type": "git",
+    "url": "1"
+  },
+  "keywords": [
+    "1"
+  ],
+  "author": "1",
+  "license": "ISC",
+  "devDependencies": {
+    "electron": "^35.2.1"
+  }
+}
