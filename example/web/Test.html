@@ -17,22 +17,22 @@
             //     interval: 6000,
             //     storageLimit: 100,
             // },
-            autoTrack: {
-                pageShow: true,
-                pageHide: true,
-                properties: { // 自动采集自定义属性
-                    staticKey: 'staticValue'
-                },
-                callback: (eventType) => { // 自动采集回调
-                    if (eventType === 'pageShow') {
-                        return { appShowKey: 'appShowValue' };
-                    } else if (eventType === 'pageHide') {
-                        return { appHideKey: 'appHideValue' };
-                    } else {
-                        return {};
-                    }
-                }
-            },
+            // autoTrack: {
+            //     pageShow: true,
+            //     pageHide: true,
+            //     properties: { // 自动采集自定义属性
+            //         staticKey: 'staticValue'
+            //     },
+            //     callback: (eventType) => { // 自动采集回调
+            //         if (eventType === 'pageShow') {
+            //             return { appShowKey: 'appShowValue' };
+            //         } else if (eventType === 'pageHide') {
+            //             return { appHideKey: 'appHideValue' };
+            //         } else {
+            //             return {};
+            //         }
+            //     }
+            // },
             //mode: 'debug',
             accountId: 'llb',
             distinctId: 'dis_a',
