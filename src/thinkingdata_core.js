@@ -221,57 +221,85 @@ TDAnalytics.prototype.trackLink = function (dom, eventName, eventProperties) {
         return;
     }
 
-    if (dom && _.check.isObject(dom)) {
-        let elements = [];
-        _.each(dom, (value, key) => {
-            if (value && _.check.isArray(value)) {
-                _.each(value, (typeName) => {
-                    switch (key) {
-                        case 'tag':
-                            _.each(document.getElementsByTagName(typeName), (element) => {
-                                if (elements.indexOf(element) < 0) {
-                                    elements.push(element);
-                                }
-                            });
-                            break;
-                        case 'class':
-                            _.each(document.getElementsByClassName(typeName), (element) => {
-                                if (elements.indexOf(element) < 0) {
-                                    elements.push(element);
-                                }
-                            });
-                            break;
-                        case 'id':
-                            var element = document.getElementById(typeName);
-                            if (element !== null && elements.indexOf(element) < 0) {
-                                elements.push(element);
-                            }
-                            break;
-                    }
-                });
-            }
-        });
-
-        _.each(elements, (element) => {
-            if (element !== null) {
-                var disbaleList = this._getConfig('disablePresetProperties');
-                var properties = _.extend({}, _.info.pageProperties(disbaleList), eventProperties);
-                if (!_.isDisableProperties(disbaleList, '#element_type')) {
-                    properties['#element_type'] = element.nodeName.toLowerCase();
-                }
-                if (_.check.isUndefined(properties['name'])) {
-                    properties['name'] = element.getAttribute('td-name') || element.innerHTML || element.value || 'Unable to get Identify';
-                }
-                element.addEventListener('click', () => {
-                    this._sendRequest({
-                        type: 'track',
-                        event: eventName,
-                        properties: strict ? PropertyChecker.stripProperties(properties) : properties,
-                    });
-                });
-            }
-        });
+    if (!dom || !_.check.isObject(dom)) {
+        return;
     }
+
+    const matchRules = this._compileMatchRules(dom);
+    document.removeEventListener('click', this._linkClickHandler);
+    this._linkClickHandler = (e) => {
+        this._handleLinkClick(e, matchRules, eventName, eventProperties, strict);
+    };
+    document.addEventListener('click', this._linkClickHandler);
+};
+
+TDAnalytics.prototype._handleLinkClick = function (e, matchRules, eventName, eventProperties, strict) {
+    let target = e.target;
+    while (target && target !== document) {
+        if (matchRules(target)) {
+            break;
+        }
+        target = target.parentNode;
+    }
+    if (!target || target === document) {
+        return;
+    }
+    const disbaleList = this._getConfig('disablePresetProperties');
+    const properties = _.extend({}, _.info.pageProperties(disbaleList), eventProperties);
+    if (!_.isDisableProperties(disbaleList, '#element_type')) {
+        properties['#element_type'] = target.nodeName.toLowerCase();
+    }
+    if (_.check.isUndefined(properties['name'])) {
+        properties['name'] = target.getAttribute('td-name') || target.innerHTML || target.value || 'Unable to get Identify';
+    }
+    this._sendRequest({
+        type: 'track',
+        event: eventName,
+        properties: strict ? PropertyChecker.stripProperties(properties) : properties,
+    });
+};
+
+TDAnalytics.prototype._compileMatchRules = function (dom) {
+    const rules = {
+        tags: new Set(),
+        classes: new Set(),
+        ids: new Set()
+    };
+    _.each(dom, (value, key) => {
+        if (value && _.check.isArray(value)) {
+            _.each(value, (typeName) => {
+                switch (key) {
+                    case 'tag':
+                        rules.tags.add(typeName.toLowerCase());
+                        break;
+                    case 'class':
+                        rules.classes.add(typeName);
+                        break;
+                    case 'id':
+                        rules.ids.add(typeName);
+                        break;
+                }
+            });
+        }
+    });
+    return function (element) {
+        if (!element) return false;
+        if (rules.ids.size > 0 && rules.ids.has(element.id)) {
+            return true;
+        }
+        if (rules.tags.size > 0 && rules.tags.has(element.nodeName.toLowerCase())) {
+            return true;
+        }
+        if (rules.classes.size > 0) {
+            const classList = element.classList;
+            for (const cls of rules.classes) {
+                if (classList.contains(cls)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    };
 };
 
 /**

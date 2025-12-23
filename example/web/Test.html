@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="referrer" content="origin">
     <title>JS Web Test</title>
-    <!-- <script src="../../release/thinkingdata.umd.min.js"></script> -->
-    <script src="./thinkingdata.umd.min.js"></script>
+    <script src="../../release/thinkingdata.umd.min.js"></script>
+    <!-- <script src="./thinkingdata.umd.min.js"></script> -->
     <script>
         var config = {
             appId: '381f8bbad66c41a18923089321a1ba6f',
@@ -53,9 +53,34 @@
                 });
             }
         }
+        function trackLink() {
+            ta.trackLink(
+                {
+                    tag: ["a", "button"], //HTML标签
+                    class: ["class1", "class2"], //自定义的Class名称
+                    id: ["id1", "id2"] //自定义的ID名称
+                }, //监控元素的规则
+                "click", //追踪事件的名称
+                {
+                    production: "产品名",
+                    // name: "元素标识名"
+                } //事件的属性
+            );
+        }
+
+        function addButton() {
+            const newBtn = document.createElement('button');
+            newBtn.innerText = '动态添加的测试按钮'; // 按钮显示文本
+            newBtn.setAttribute('td-name', 'dynamic_test_button'); // 关键：添加td-name自定义属性
+            newBtn.className = 'dynamic-btn'; // 可选：添加类名，方便样式控制
+            document.body.appendChild(newBtn);
+        }
     </script>
 </head>
 
 <body>
     <button onclick="sendTestEvent()">发送测试事件</button>
+    <button onclick="trackLink()">按钮点击事件hook</button>
+    <button td-name="test_button" class="class1">测试按钮</button>
+    <button onclick="addButton()">动态添加按钮</button>
 </body>
