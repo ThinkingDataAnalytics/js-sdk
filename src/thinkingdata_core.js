@@ -1218,6 +1218,10 @@ TDAnalytics.prototype.getAccountId = function () {
     return this['persistence'].getAccountId();
 };
 
+TDAnalytics.prototype.getSDKVersion = function(){
+    return Config.LIB_VERSION;
+};
+
 TDAnalytics.prototype.registerAnalyticsObserver = function (analyticsObserver) {
     if (!this._isCollectData()) {
         return;
