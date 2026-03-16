@@ -32,7 +32,8 @@ var DEFAULT_CONFIG = {
     enableCalibrationTime: false,
     imgUseCrossorigin: false,
     disablePresetProperties: [],
-    disableEventList: []
+    disableEventList: [],
+    disableRConfig: true
 };
 
 var ThinkingDataPersistence = function (param) {
@@ -1016,7 +1017,7 @@ TDAnalytics.prototype.track = function (eventName, eventProperties, eventTime, c
     if (!this._isCollectData()) {
         return;
     }
-    if (eventName === 'ta_page_show' || eventName === 'ta_page_hide') {
+    if (eventName === 'ta_page_show' || eventName === 'ta_page_hide' || eventName === 'ta_pageview') {
         this._sendRequest({
             type: 'track',
             event: eventName,
@@ -1218,7 +1219,7 @@ TDAnalytics.prototype.getAccountId = function () {
     return this['persistence'].getAccountId();
 };
 
-TDAnalytics.prototype.getSDKVersion = function(){
+TDAnalytics.prototype.getSDKVersion = function () {
     return Config.LIB_VERSION;
 };
 
@@ -1331,10 +1332,6 @@ TDAnalytics.prototype.timeEvent = function (eventName) {
     this['persistence'].setEventTimer(eventName, _.getCurrentTimeStamp());
 };
 
-TDAnalytics.prototype.autoTrackSinglePage = function () {
-    this['pageLifeCycle'].autoTrackSinglePage();
-};
-
 /**
  * track ta_pageview.
  * @param {String} type autoTrack or siteLinker
@@ -1428,13 +1425,13 @@ TDAnalytics.prototype.init = function (param) {
             this.batchConsumer = new BatchConsumer(this['config']);
             this.batchConsumer.batchInterval();
         }
-        if(this._getConfig('accountId')){
+        if (this._getConfig('accountId')) {
             this.login(this._getConfig('accountId'));
         }
-        if(this._getConfig('distinctId')){
+        if (this._getConfig('distinctId')) {
             this.setDistinctId(this._getConfig('distinctId'));
         }
-        if(this._getConfig('superProperties')){
+        if (this._getConfig('superProperties')) {
             this.setSuperProperties(this._getConfig('superProperties'));
         }
         this['pageLifeCycle'] = new PageLifeCycle(this, this._getConfig('autoTrack'), this._getConfig('disablePresetProperties'));
@@ -1443,31 +1440,33 @@ TDAnalytics.prototype.init = function (param) {
         if (this.config.mode) {
             m = this.config.mode;
         }
-        var xhr = null;
-        if (window.XMLHttpRequest) {
-            xhr = new XMLHttpRequest();
-        } else {
-            // eslint-disable-next-line no-undef
-            xhr = new ActiveXObject('Microsoft.XMLHTTP');
-        }
-        var configUrl = `${this._getConfig('originalUrl')}/config?appid=${this.config.appId}`;
-        xhr.open('GET', configUrl, true);
-        xhr.onload = () => {
-            if (xhr.status >= 200 && xhr.status < 300) {
-                var configData = JSON.parse(xhr.responseText);
-                Log.i('[ThinkingData] Info: TDAnalytics SDK config data: ');
-                Log.i(configData);
-                this._setConfig({
-                    disableEventList: configData.data.disable_event_list,
-                });
+        if (!this._getConfig('disableRConfig')) {
+            var xhr = null;
+            if (window.XMLHttpRequest) {
+                xhr = new XMLHttpRequest();
             } else {
-                Log.e('TDAnalytics SDK config error code: ' + xhr.status);
+                // eslint-disable-next-line no-undef
+                xhr = new ActiveXObject('Microsoft.XMLHTTP');
             }
-        };
-        xhr.onerror = function () {
-            Log.e('TDAnalytics SDK config network error');
-        };
-        xhr.send();
+            var configUrl = `${this._getConfig('originalUrl')}/config?appid=${this.config.appId}`;
+            xhr.open('GET', configUrl, true);
+            xhr.onload = () => {
+                if (xhr.status >= 200 && xhr.status < 300) {
+                    var configData = JSON.parse(xhr.responseText);
+                    Log.i('[ThinkingData] Info: TDAnalytics SDK config data: ');
+                    Log.i(configData);
+                    this._setConfig({
+                        disableEventList: configData.data.disable_event_list,
+                    });
+                } else {
+                    Log.e('TDAnalytics SDK config error code: ' + xhr.status);
+                }
+            };
+            xhr.onerror = function () {
+                Log.e('TDAnalytics SDK config network error');
+            };
+            xhr.send();
+        }
         Log.i('[ThinkingData] Info: TDAnalytics SDK initialize success, AppId = ' + this.config.appId + ', ServerUrl = ' + this.config.serverUrl + ', Mode = ' + m + ', DeviceId = ' + this.getDeviceId() + ', Lib = js, LibVersion = ' + Config.LIB_VERSION);
     } else {
         Log.i('The ThinkingData libraray has been initialized.');
@@ -1488,15 +1487,17 @@ class PageLifeCycle {
         } else {
             this.autoPageHide = false;
         }
+        if (_.paramType(config) === 'Object' && _.paramType(config.pageView) === 'Boolean') {
+            this.autoPageView = config.pageView;
+        } else {
+            this.autoPageView = false;
+        }
         if (_.paramType(config) === 'Object') {
             this.staticProperties = config.properties;
             this.callback = config.callback;
         }
         this.disableList = disableList;
-        this.lastPageUrl = '';
-        this.lastPagePath = '';
-        this.title = '';
-        this.isFirstRouter = true;
+        this.lastPageViewStamp = 0;
     }
 
     start() {
@@ -1507,50 +1508,41 @@ class PageLifeCycle {
         if ('onvisibilitychange' in document) {
             _.addEvent(document, 'visibilitychange', function () {
                 if (document.hidden) {
-                    //when the page hides, sending ta_page_hide event
                     page.trackPageHideEvent();
                 } else {
-                    //when the page shows, sending ta_page_show event
                     page.trackPageShowEvent();
                 }
             });
         }
+        if (this.autoPageView) {
+            this.trackPageViewEvent();
+            _.addSinglePageEventListener(function () {
+                setTimeout(function () {
+                    page.trackPageViewEvent();
+                }, 3);
+            });
+        }
     }
 
-    getPageProperties() {
-        var properties = _.info.pageProperties(this.disableList);
-        if (properties['#url'] !== null) {
-            properties['#url'] = this.lastPageUrl;
-        }
-        if (properties['#url_path'] !== null) {
-            properties['#url_path'] = this.lastPagePath;
-        }
-        if (properties['#title'] !== null) {
-            properties['#title'] = this.title;
-        }
-        return properties;
-    }
-
-    autoTrackSinglePage() {
-        if (this.isFirstRouter) {
-            this.isFirstRouter = false;
+    trackPageViewEvent() {
+        let currentTime = _.getCurrentTimeStamp();
+        if (currentTime - this.lastPageViewStamp < 30) {
             return;
         }
-        if (this.autoPageHide) {
-            this.taLib.trackWithBeacon('ta_page_hide', _.extend(this.getPageProperties(), this.staticProperties, _.isFunction(this.callback) ? this.callback('pageHide') : {}));
+        this.lastPageViewStamp = currentTime;
+        let pageProperties = _.info.pageProperties(this.disableList);
+        if (this.lastReferrer && !this.disableList.includes('#referrer')) {
+            pageProperties['#referrer'] = this.lastReferrer;
         }
-        setTimeout(() => {
-            this.trackPageShowEvent();
-        }, 0);
+        this.taLib.track('ta_pageview', _.extend(pageProperties, this.staticProperties, _.isFunction(this.callback) ? this.callback('pageView') : {}));
+        if (pageProperties['#url']) {
+            this.lastReferrer = pageProperties['#url'];
+        }
     }
 
     trackPageShowEvent() {
-        this.isFirstRouter = false;
         if (this.autoPageShow) {
             this.taLib.track('ta_page_show', _.extend(_.info.pageProperties(this.disableList), this.staticProperties, _.isFunction(this.callback) ? this.callback('pageShow') : {}));
-            this.lastPageUrl = location.href;
-            this.lastPagePath = location.pathname;
-            this.title = document.title;
         }
         this.taLib.timeEvent('ta_page_hide');
     }

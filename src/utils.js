@@ -228,7 +228,7 @@ _.UUIDv4 = function () {
         return crypto.randomUUID();
     }
     // 不支持时使用自定义随机数方案
-    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
         const r = Math.random() * 16 | 0;
         const v = c === 'x' ? r : (r & 0x3 | 0x8);
         return v.toString(16);
@@ -690,12 +690,15 @@ _.info = {
             } else if (ua.match(/opr/) !== null) {
                 browser['type'] = 'opera';
                 versionMatch.push(/opr\/([\d.]+)/);
+            }else if (ua.match(/applewebkit/) !== null) {
+                browser['type'] = 'applewebkit';
+                versionMatch.push(/applewebkit\/([\d.]+)/);
             } else if (ua.match(/chrome/) !== null) {
                 browser['type'] = 'chrome';
                 versionMatch.push(/chrome\/([\d.]+)/);
             } else if (ua.match(/safari/) !== null) {
                 browser['type'] = 'safari';
-                versionMatch.push(/version\/([\d.]+)/);
+                versionMatch.push(/safari\/([\d.]+)/);
             } else if (ua.match(/trident/) !== null || ua.match(/msie/) !== null) {
                 browser['type'] = 'ie';
             }
@@ -1230,6 +1233,48 @@ _.getCurrentTimeStamp = function () {
 
 _.getCurrentDate = function () {
     return new Date(Date.now());
+};
+
+_.addPageEvent = function (element, eventName, handler) {
+    if (element.addEventListener) {
+        element.addEventListener(eventName, handler, false);
+    } else {
+        element.attachEvent('on' + eventName, handler);
+    }
+};
+
+_.addSinglePageEventListener = function (callback) {
+
+    var historyPushState = window.history.pushState;
+    var historyReplaceState = window.history.replaceState;
+
+    if (_.isFunction(window.history.pushState)) {
+        window.history.pushState = function () {
+            historyPushState.apply(window.history, arguments);
+            callback();
+        };
+    }
+
+    if (_.isFunction(window.history.replaceState)) {
+        window.history.replaceState = function () {
+            historyReplaceState.apply(window.history, arguments);
+            callback();
+        };
+    }
+
+    var singlePageEvent;
+    if (window.document.documentMode) {
+        // IE 浏览器：监听 hashchange 事件（哈希路由变化）
+        singlePageEvent = 'hashchange';
+    } else {
+        // 现代浏览器：有 pushState 则监听 popstate（前进/后退），否则监听 hashchange
+        singlePageEvent = historyPushState ? 'popstate' : 'hashchange';
+    }
+
+    //监听原生事件（处理浏览器前进/后退、hash 变化的场景）
+    _.addPageEvent(window, singlePageEvent, function () {
+        callback();
+    });
 };
 
 class Log {

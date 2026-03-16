@@ -71,8 +71,29 @@
     margin: 82px auto 32px;
     padding: 0 16px;
     max-width: 960px;
-    flex-direction: column;
+    flex-direction: row;
     align-items: center;
+    justify-content: center;
+    gap: 16px;
+  }
+  
+  .content button {
+    padding: 10px 20px;
+    font-size: 16px;
+    background-color: #1976d2;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+  }
+  
+  .content button:hover {
+    background-color: #1565c0;
+  }
+  
+  .content button:active {
+    background-color: #0d47a1;
   }
 
   svg.material-icons {
@@ -326,8 +347,10 @@
 </div>
 
 <div class="content" role="main">
-  <button (click)="handleClick()">点击我</button>
-
+  <button (click)="handleClick()">SDK初始化</button>
+  <button (click)="handleTrackLink()">按钮点击</button>
+  <button (click)="handleAddSinglePageEvent()">添加路由监听</button>
+  <button (click)="handleJump()">跳转到PageB</button>
 </div>
 
 <router-outlet></router-outlet>

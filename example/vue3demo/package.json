@@ -10,7 +10,8 @@
   "dependencies": {
     "core-js": "^3.8.3",
     "thinkingdata-browser": "file:.yalc/thinkingdata-browser",
-    "vue": "^3.2.13"
+    "vue": "^3.2.13",
+    "vue-router": "^4.6.4"
   },
   "devDependencies": {
     "@babel/core": "^7.12.16",

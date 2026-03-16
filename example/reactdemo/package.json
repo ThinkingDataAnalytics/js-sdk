@@ -9,6 +9,7 @@
     "@testing-library/user-event": "^13.5.0",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
+    "react-router-dom": "^7.12.0",
     "react-scripts": "5.0.1",
     "thinkingdata-browser": "file:.yalc/thinkingdata-browser",
     "web-vitals": "^2.1.4"
