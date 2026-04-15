@@ -16,6 +16,7 @@ function Home() {
         pageShow: true, //开启页面展示事件，事件名ta_page_show
         pageHide: true, //开启页面隐藏事件，事件名ta_page_hide
         pageView: true, //开启页面视图事件，事件名ta_pageview
+        pageClick:true,
         properties: { // 自动采集自定义属性
           staticKey: 'staticValue'
         },
@@ -75,7 +76,7 @@ function Home() {
   return (
     <div className="App">
       <button onClick={handleInit}>SDK初始化</button>
-      <button onClick={handleTrack}>上报事件</button>
+      <button onClick={handleTrack} td-track-ignore = 'false'>上报事件</button>
       <button onClick={handlePer}>最佳实践</button>
       <button onClick={handleAddSinglePageEvent}>添加路由监听</button>
       <button onClick={handleJump}>跳转到PageB</button>

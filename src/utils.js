@@ -1340,4 +1340,47 @@ class Log {
     }
 }
 
+_.compileMatchRules = function (dom) {
+    var rules = {
+        tags: new Set(),
+        classes: new Set(),
+        ids: new Set()
+    };
+    _.each(dom, function (value, key) {
+        if (value && _.check.isArray(value)) {
+            _.each(value, function (typeName) {
+                switch (key) {
+                    case 'tag':
+                        rules.tags.add(typeName.toLowerCase());
+                        break;
+                    case 'class':
+                        rules.classes.add(typeName);
+                        break;
+                    case 'id':
+                        rules.ids.add(typeName);
+                        break;
+                }
+            });
+        }
+    });
+    return function (element) {
+        if (!element) return false;
+        if (rules.ids.size > 0 && rules.ids.has(element.id)) {
+            return true;
+        }
+        if (rules.tags.size > 0 && rules.tags.has(element.nodeName.toLowerCase())) {
+            return true;
+        }
+        if (rules.classes.size > 0) {
+            var classList = element.classList;
+            for (var cls of rules.classes) {
+                if (classList.contains(cls)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    };
+};
+
 export { _, Log, slice };

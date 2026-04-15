@@ -261,46 +261,7 @@ TDAnalytics.prototype._handleLinkClick = function (e, matchRules, eventName, eve
 };
 
 TDAnalytics.prototype._compileMatchRules = function (dom) {
-    const rules = {
-        tags: new Set(),
-        classes: new Set(),
-        ids: new Set()
-    };
-    _.each(dom, (value, key) => {
-        if (value && _.check.isArray(value)) {
-            _.each(value, (typeName) => {
-                switch (key) {
-                    case 'tag':
-                        rules.tags.add(typeName.toLowerCase());
-                        break;
-                    case 'class':
-                        rules.classes.add(typeName);
-                        break;
-                    case 'id':
-                        rules.ids.add(typeName);
-                        break;
-                }
-            });
-        }
-    });
-    return function (element) {
-        if (!element) return false;
-        if (rules.ids.size > 0 && rules.ids.has(element.id)) {
-            return true;
-        }
-        if (rules.tags.size > 0 && rules.tags.has(element.nodeName.toLowerCase())) {
-            return true;
-        }
-        if (rules.classes.size > 0) {
-            const classList = element.classList;
-            for (const cls of rules.classes) {
-                if (classList.contains(cls)) {
-                    return true;
-                }
-            }
-        }
-        return false;
-    };
+    return _.compileMatchRules(dom);
 };
 
 /**
@@ -1017,7 +978,7 @@ TDAnalytics.prototype.track = function (eventName, eventProperties, eventTime, c
     if (!this._isCollectData()) {
         return;
     }
-    if (eventName === 'ta_page_show' || eventName === 'ta_page_hide' || eventName === 'ta_pageview') {
+    if (eventName === 'ta_page_show' || eventName === 'ta_page_hide' || eventName === 'ta_pageview' || eventName === 'ta_page_click') {
         this._sendRequest({
             type: 'track',
             event: eventName,
@@ -1492,6 +1453,11 @@ class PageLifeCycle {
         } else {
             this.autoPageView = false;
         }
+        if (_.paramType(config) === 'Object' && _.paramType(config.pageClick) === 'Boolean') {
+            this.autoPageClick = config.pageClick;
+        } else {
+            this.autoPageClick = false;
+        }
         if (_.paramType(config) === 'Object') {
             this.staticProperties = config.properties;
             this.callback = config.callback;
@@ -1522,6 +1488,57 @@ class PageLifeCycle {
                 }, 3);
             });
         }
+        if (this.autoPageClick) {
+            this.initPageClickHandler();
+        }
+    }
+
+    initPageClickHandler() {
+        var page = this;
+        this.taLib._pageClickHandler = function(e) {
+            page.handlePageClick(e);
+        };
+        document.addEventListener('click', this.taLib._pageClickHandler);
+    }
+
+    handlePageClick(e) {
+        var target = e.target;
+        while (target && target !== document) {
+            if (target.onclick || target.hasAttribute('td-track-id')) {
+                break;
+            }
+            target = target.parentNode;
+        }
+        if (!target || target === document) {
+            return;
+        }
+        if(target.getAttribute('td-track-ignore') === '' || target.getAttribute('td-track-ignore') === 'true'){
+            return;
+        }
+        var properties = _.extend({}, _.info.pageProperties(this.disableList));
+        if (!_.isDisableProperties(this.disableList, '#element_type')) {
+            properties['#element_type'] = target.nodeName.toLowerCase();
+        }
+        var elementContent = target.innerHTML || target.value || '';
+        if (elementContent && !_.isDisableProperties(this.disableList, '#element_content')) {
+            properties['#element_content'] = elementContent;
+        }
+        var elementId = target.getAttribute('td-track-id');
+        if (elementId && !_.isDisableProperties(this.disableList, '#element_id')) {
+            properties['#element_id'] = elementId;
+        }
+        if (!_.isDisableProperties(this.disableList, '#element_selector')) {
+            var selector = {};
+            if (target.id) {
+                selector.id = target.id;
+            }
+            var classList = target.classList;
+            if (classList && classList.length > 0) {
+                selector.class = '.' + Array.from(classList).join('.');
+            }
+            properties['#element_selector'] = JSON.stringify(selector);
+        }
+        this.taLib.track('ta_page_click', _.extend(properties, this.staticProperties, _.isFunction(this.callback) ? this.callback('pageClick') : {}));
     }
 
     trackPageViewEvent() {

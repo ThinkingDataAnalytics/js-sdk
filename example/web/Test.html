@@ -8,8 +8,8 @@
     <!-- <script src="./thinkingdata.umd.min.js"></script> -->
     <script>
         var config = {
-            appId: '381f8bbad66c41a18923089321a1ba6f',
-            serverUrl: 'https://receiver-ta-preview.thinkingdata.cn',
+            appId: '8cd3a5d554c7446a87a177fba3287b16',
+            serverUrl: 'https://receiver-ta-demo.thinkingdata.cn',
             send_method: 'ajax',
             // batch: true,
             // batch: {
@@ -22,6 +22,7 @@
                 pageShow: true,
                 pageHide: true,
                 pageView: true,
+                pageClick:true,
                 properties: { // 自动采集自定义属性
                     staticKey: 'staticValue'
                 },
@@ -30,7 +31,10 @@
                         return { appShowKey: 'appShowValue' };
                     } else if (eventType === 'pageHide') {
                         return { appHideKey: 'appHideValue' };
-                    } else {
+                    }else if(eventType === 'pageClick') {
+                        return { appclickKey: 'appClickValue' };
+                    }
+                    else {
                         return {};
                     }
                 }
@@ -76,6 +80,9 @@
             newBtn.innerText = '动态添加的测试按钮'; // 按钮显示文本
             newBtn.setAttribute('td-name', 'dynamic_test_button'); // 关键：添加td-name自定义属性
             newBtn.className = 'dynamic-btn'; // 可选：添加类名，方便样式控制
+            newBtn.onclick = function(){
+
+            }
             document.body.appendChild(newBtn);
         }
 
@@ -96,6 +103,9 @@
                 instance1_event_name: 'instance1_event_value'
             });
         }
+        function  testDiv(){
+
+        }
     </script>
 </head>
 
@@ -103,11 +113,11 @@
     <button onclick="sendTestEvent()">发送测试事件</button>
     <button onclick="trackLink()">按钮点击事件hook</button>
     <button td-name="test_button" class="class1">测试按钮</button>
-    <button onclick="addButton()">动态添加按钮</button>
+    <button onclick="addButton()" td-track-id="store_item_detail.btn_purchase" td-track-ignore >动态添加按钮</button>
     <button onclick="initInstance()">初始化实例1</button>
     <button onclick="login1()">实例1登录</button>
     <button onclick="track1()">实例1事件</button>
     <a href="PageB.html" target="_blank">跳转到PageB</a>
-    <div>测试div</div>
+    <div onclick="testDiv" td-track-id="store_item_detail.ccc" id="id1" class="class1 class2">测试div</div>
 
 </body>

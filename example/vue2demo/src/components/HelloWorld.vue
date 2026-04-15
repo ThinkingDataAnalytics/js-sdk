@@ -2,7 +2,7 @@
   <div class="hello">
     <h1>{{ msg }}</h1>
     <button @click="handleClick">SDK初始化</button>
-    <button @click="handleTrack">发送事件</button>
+    <button @click="handleTrack" td-track-id="kkkk" td-track-ignore>发送事件</button>
     <button @click="handlePer">最佳实践</button>
     <button @click="handleJump">跳转到PageB</button>
   </div>
@@ -26,6 +26,7 @@ export default {
           pageShow: true, //开启页面展示事件，事件名ta_page_show
           pageHide: true, //开启页面隐藏事件，事件名ta_page_hide
           pageView: true, //开启页面视图事件，事件名ta_pageview
+          pageClick:true
         },
         properties: { // 自动采集自定义属性
           staticKey: 'staticValue'
