@@ -1,12 +1,12 @@
 #!/bin/bash
 ./node_modules/.bin/rollup -c
 mkdir -p release
-uglifyjs build/thinkingdata.global.js -c -m -o release/thinkingdata.min.js
-uglifyjs build/thinkingdata.umd.js -c -m -o ./release/thinkingdata.umd.min.js
-uglifyjs build/thinkingdata.esm.js -c -m -o ./release/thinkingdata.esm.min.js
-#uglifyjs build/thinkingdata.amd.js -c -m -o ./release/thinkingdata.amd.min.js
-uglifyjs build/thinkingdata.cjs.js -c -m -o ./release/thinkingdata.cjs.min.js
-#uglifyjs thinkingdata_jslib_snippet.js -c -m -o release/thinkingdata_jslib_snippet.min.js
+./node_modules/.bin/uglifyjs build/thinkingdata.global.js -c -m -o release/thinkingdata.min.js
+./node_modules/.bin/uglifyjs build/thinkingdata.umd.js -c -m -o ./release/thinkingdata.umd.min.js
+./node_modules/.bin/uglifyjs build/thinkingdata.esm.js -c -m -o ./release/thinkingdata.esm.min.js
+#./node_modules/.bin/uglifyjs build/thinkingdata.amd.js -c -m -o ./release/thinkingdata.amd.min.js
+./node_modules/.bin/uglifyjs build/thinkingdata.cjs.js -c -m -o ./release/thinkingdata.cjs.min.js
+#./node_modules/.bin/uglifyjs thinkingdata_jslib_snippet.js -c -m -o release/thinkingdata_jslib_snippet.min.js
 
 cp -f src/ts/thinkingdata.min.d.ts release/thinkingdata.cjs.min.d.ts
 cp -f src/ts/thinkingdata.min.d.ts release/thinkingdata.esm.min.d.ts
@@ -39,5 +39,5 @@ cat>npm_js/package.json<<EOF
 EOF
 popd
 
-uglifyjs build/thinkingdata.global.js -o ./example/thinkingdata.js
+./node_modules/.bin/uglifyjs build/thinkingdata.global.js -o ./example/thinkingdata.js
 

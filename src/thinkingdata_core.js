@@ -98,6 +98,14 @@ ThinkingDataPersistence.prototype._load = function (oldCookie) {
     }
 };
 
+ThinkingDataPersistence.prototype.reload = function () {
+    if (!this.enabled) return;
+    var entry = this.storage.get(this.name);
+    if (entry !== null && _.check.isJSONString(entry)) {
+        this._state = _.extend({}, JSON.parse(entry));
+    }
+};
+
 ThinkingDataPersistence.prototype.getDistinctId = function () {
     return this._state.distinct_id;
 };
@@ -309,6 +317,15 @@ TDAnalytics.prototype.getPresetProperties = function () {
     if (properties['#browser_version']) {
         presetProperties.browserVersion = properties['#browser_version'];
     }
+    if (properties['#ua']) {
+        presetProperties.ua = properties['#ua'];
+    }
+    if (properties['#system_language']) {
+        presetProperties.systemLanguage = properties['#system_language'];
+    }
+    if (properties['#utm']) {
+        presetProperties.utm = properties['#utm'];
+    }
     presetProperties.deviceId = this.getDeviceId();
     let zoneOffset = 0 - (_.getCurrentDate().getTimezoneOffset() / 60.0);
     if (this._getConfig('zoneOffset')) {
@@ -322,6 +339,9 @@ TDAnalytics.prototype.getPresetProperties = function () {
             '#screen_height': presetProperties.screenHeight,
             '#browser': presetProperties.browser,
             '#browser_version': presetProperties.browserVersion,
+            '#ua': presetProperties.ua,
+            '#system_language': presetProperties.systemLanguage,
+            '#utm': presetProperties.utm,
             '#device_id': presetProperties.deviceId,
             '#zone_offset': presetProperties.zoneOffset
         };
@@ -561,6 +581,7 @@ TDAnalytics.prototype._sendRequest = function (eventData, callback, tryBeacon) {
     //     }
     // }
     var time = _.check.isUndefined(eventData.time) || !_.check.isDate(eventData.time) ? _.getCurrentDate() : eventData.time;
+    this['persistence'].reload();
     var data = {
         data: [{
             '#type': eventData.type,
@@ -1351,6 +1372,7 @@ TDAnalytics.prototype.init = function (param) {
     if (_.check.isUndefined(this['config'])) {
         this['config'] = {};
         this.currentProps = this.currentProps || {};
+        _.cacheUtm();
         this._setConfig(_.extend({}, DEFAULT_CONFIG, param));
         this.observers = [];
         this['persistence'] = new ThinkingDataPersistence(this['config']);

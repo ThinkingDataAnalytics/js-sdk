@@ -103,13 +103,20 @@
                 instance1_event_name: 'instance1_event_value'
             });
         }
-        function  testDiv(){
+        function testDiv() {
 
+        }
+
+        function testGetPresetProperties() {
+            var preset = ta.getPresetProperties();
+            console.log('getPresetProperties:', preset);
+            console.log('toEventPresetProperties:', preset.toEventPresetProperties());
         }
     </script>
 </head>
 
 <body>
+    <button onclick="testGetPresetProperties()">测试 getPresetProperties</button>
     <button onclick="sendTestEvent()">发送测试事件</button>
     <button onclick="trackLink()">按钮点击事件hook</button>
     <button td-name="test_button" class="class1">测试按钮</button>

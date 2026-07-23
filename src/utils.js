@@ -630,6 +630,9 @@ _.info = {
             } else if (ua.match(/edgios/) !== null) {
                 browser['type'] = 'edge';
                 versionMatch.push(/edgios\/([\d.]+)/);
+            } else if (ua.match(/edg\//) !== null) {
+                browser['type'] = 'edge';
+                versionMatch.push(/edg\/([\d.]+)/);
             } else if (ua.match(/liebaofast/) !== null) {
                 browser['type'] = 'liebao';
                 versionMatch.push(/liebaofast\/([\d.]+)/);
@@ -824,7 +827,9 @@ _.isDisableProperties = function (disableList, property) {
     }
 };
 
-_.getUtm = function () {
+_.cachedUtm = null;
+
+_.parseUtmFromUrl = function () {
     var params = {};
     _.each(utmTypes, function (kwkey) {
         var kw = _.getQueryParam(location.href, kwkey);
@@ -833,6 +838,16 @@ _.getUtm = function () {
         }
     });
     return JSON.stringify(params);
+};
+
+_.cacheUtm = function () {
+    if (_.cachedUtm === null) {
+        _.cachedUtm = _.parseUtmFromUrl();
+    }
+};
+
+_.getUtm = function () {
+    return _.cachedUtm !== null ? _.cachedUtm : '{}';
 };
 
 _.getQueryParam = function (url, key) {
