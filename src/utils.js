@@ -693,15 +693,15 @@ _.info = {
             } else if (ua.match(/opr/) !== null) {
                 browser['type'] = 'opera';
                 versionMatch.push(/opr\/([\d.]+)/);
-            }else if (ua.match(/applewebkit/) !== null) {
-                browser['type'] = 'applewebkit';
-                versionMatch.push(/applewebkit\/([\d.]+)/);
             } else if (ua.match(/chrome/) !== null) {
                 browser['type'] = 'chrome';
                 versionMatch.push(/chrome\/([\d.]+)/);
             } else if (ua.match(/safari/) !== null) {
                 browser['type'] = 'safari';
-                versionMatch.push(/safari\/([\d.]+)/);
+                versionMatch.push(/version\/([\d.]+)/);
+            } else if (ua.match(/applewebkit/) !== null) {
+                browser['type'] = 'applewebkit';
+                versionMatch.push(/applewebkit\/([\d.]+)/);
             } else if (ua.match(/trident/) !== null || ua.match(/msie/) !== null) {
                 browser['type'] = 'ie';
             }
