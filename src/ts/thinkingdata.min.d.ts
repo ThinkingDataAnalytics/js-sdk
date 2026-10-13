@@ -1,8 +1,15 @@
+interface InitParam {
+    appId?: string;
+    serverUrl?: string;
+    /** Session timeout in milliseconds. Default 300000. Values <= 0 use the default. */
+    sessionTimeout?: number;
+    [key: string]: any;
+}
 declare namespace thinkingdata {
-    function init(param: object): void;
+    function init(param: InitParam): void;
     function trackLink(dom: object, eventName: string, eventProperties: object): void;
     function track(eventName: string, eventProperties?: object, eventTime?: Date, callback?: Function): void;
-    function initInstance(name: string, param: object): void;
+    function initInstance(name: string, param: InitParam): void;
     function login(accountId: string): void;
     function setPageProperty(obj: object): void;
     function getPageProperty(): object;
@@ -38,6 +45,7 @@ declare namespace thinkingdata {
     function setTrackStatus(config: object): void;
 }
 declare class PresetProperties {
+    sessionId?: string;
     toEventPresetProperties(): any;
 }
 export default thinkingdata;

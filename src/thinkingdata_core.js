@@ -7,6 +7,11 @@ import {
 import {
     PropertyChecker
 } from './PropertyChecker';
+import {
+    DEFAULT_SESSION_TIMEOUT,
+    SessionManager,
+    normalizeSessionTimeout,
+} from './session';
 
 // eslint-disable-next-line no-unused-vars
 import Config from './config';
@@ -33,7 +38,8 @@ var DEFAULT_CONFIG = {
     imgUseCrossorigin: false,
     disablePresetProperties: [],
     disableEventList: [],
-    disableRConfig: true
+    disableRConfig: true,
+    sessionTimeout: DEFAULT_SESSION_TIMEOUT, // milliseconds. <= 0 uses the 5 minute default.
 };
 
 var ThinkingDataPersistence = function (param) {
@@ -179,6 +185,22 @@ ThinkingDataPersistence.prototype.removeEventTimer = function (eventName) {
         this._save();
     }
     return timestamp;
+};
+
+ThinkingDataPersistence.prototype.getSessionId = function () {
+    return this._state['session_id'] || null;
+};
+
+ThinkingDataPersistence.prototype.getSessionLastEventTime = function () {
+    var storedTime = this._state['session_last_event_time'];
+    return typeof storedTime === 'number' && storedTime >= 0 ? storedTime : -1;
+};
+
+ThinkingDataPersistence.prototype.saveSession = function (sessionId, lastEventTime) {
+    this._state = this._state || {};
+    this._state['session_id'] = sessionId;
+    this._state['session_last_event_time'] = lastEventTime;
+    this._save();
 };
 
 ThinkingDataPersistence.prototype._setDeviceId = function (uuid) {
@@ -332,8 +354,14 @@ TDAnalytics.prototype.getPresetProperties = function () {
         zoneOffset = this._getConfig('zoneOffset');
     }
     presetProperties.zoneOffset = zoneOffset;
+    if (!_.isDisableProperties(this._getConfig('disablePresetProperties'), '#session_id') && this.sessionManager) {
+        var sessionId = this.sessionManager.getSessionId();
+        if (sessionId) {
+            presetProperties.sessionId = sessionId;
+        }
+    }
     presetProperties.toEventPresetProperties = function () {
-        return {
+        var mapped = {
             '#os': presetProperties.os,
             '#screen_width': presetProperties.screenWidth,
             '#screen_height': presetProperties.screenHeight,
@@ -345,6 +373,10 @@ TDAnalytics.prototype.getPresetProperties = function () {
             '#device_id': presetProperties.deviceId,
             '#zone_offset': presetProperties.zoneOffset
         };
+        if (presetProperties.sessionId) {
+            mapped['#session_id'] = presetProperties.sessionId;
+        }
+        return mapped;
     };
     return presetProperties;
 };
@@ -365,6 +397,7 @@ TDAnalytics.prototype.login = function (accountId) {
         var currentAccountId = this['persistence'].getAccountId();
         if (accountId !== currentAccountId) {
             this['persistence'].setAccountId(accountId);
+            this._startNewSession();
             Log.i('[ThinkingData] Info: Login SDK, AccountId = ' + accountId);
             this.notifyAllObserver('onAccountChanged', {
                 accountId: accountId,
@@ -384,11 +417,15 @@ TDAnalytics.prototype.logout = function (isChangeId) {
     if (!this._isCollectData()) {
         return;
     }
+    var currentAccountId = this['persistence'].getAccountId();
     if (isChangeId === true) {
         var distinctId = _.UUID();
         this['persistence'].setDistinctId(distinctId);
     }
     this['persistence'].setAccountId('');
+    if (currentAccountId) {
+        this._startNewSession();
+    }
     Log.i('[ThinkingData] Info: Logout SDK');
     this.notifyAllObserver('onAccountChanged', {
         accountId: '',
@@ -619,6 +656,7 @@ TDAnalytics.prototype._sendRequest = function (eventData, callback, tryBeacon) {
             }
             data.data[0]['properties']['#duration'] = d;
         }
+        this._applySessionId(data.data[0]['properties']);
         //add time_calibration property
         // data.data[0]['properties']['#time_calibration'] = timeCalibration;
     } else {
@@ -1361,6 +1399,7 @@ TDAnalytics.prototype._getConfig = function (propName) {
 /**
  * SDK init
  * @param {Object} param init config
+ * @param {number} [param.sessionTimeout] how long, in milliseconds, to keep #session_id after the last event. Default 300000. Values <= 0 use the default.
  */
 TDAnalytics.prototype.init = function (param) {
     if (_.check.isUndefined(param.appId) || param.appId === '' || param.appId.replace(/\s*/g, '') === '') {
@@ -1417,6 +1456,7 @@ TDAnalytics.prototype.init = function (param) {
         if (this._getConfig('superProperties')) {
             this.setSuperProperties(this._getConfig('superProperties'));
         }
+        this._initSession();
         this['pageLifeCycle'] = new PageLifeCycle(this, this._getConfig('autoTrack'), this._getConfig('disablePresetProperties'));
         this['pageLifeCycle'].start();
         var m = 'normal';
@@ -1640,9 +1680,93 @@ TDAnalytics.prototype.initInstance = function (name, param) {
     if (config.persistenceEnabled) {
         config.persistencePrefix = config.persistencePrefix + '_' + name;
     }
+    if (config.appId === this._getConfig('appId') && this.sessionManager) {
+        instance.sessionManager = this.sessionManager;
+    }
 
     instance.init(config);
     this[name] = instance;
+};
+
+TDAnalytics.prototype._getSessionTimeout = function () {
+    return normalizeSessionTimeout(this._getConfig('sessionTimeout'));
+};
+
+TDAnalytics.prototype._startNewSession = function () {
+    if (this.sessionManager) {
+        this.sessionManager.startNewSession(_.getCurrentTimeStamp());
+    } else {
+        this._sessionResetPending = true;
+    }
+};
+
+TDAnalytics.prototype._createSessionStore = function () {
+    var persistence = this['persistence'];
+    if (!persistence || !persistence.enabled) {
+        return null;
+    }
+    return {
+        loadSessionId: function () {
+            return persistence.getSessionId();
+        },
+        loadLastEventTime: function () {
+            return persistence.getSessionLastEventTime();
+        },
+        save: function (sessionId, lastEventTime) {
+            persistence.saveSession(sessionId, lastEventTime);
+        }
+    };
+};
+
+TDAnalytics.prototype._initSession = function () {
+    if (this.sessionManager) {
+        return;
+    }
+    this.sessionManager = new SessionManager(this._createSessionStore());
+    this._bindSessionLifecycle();
+    if (this._sessionResetPending) {
+        this.sessionManager.startNewSession(_.getCurrentTimeStamp());
+        this._sessionResetPending = false;
+    }
+};
+
+TDAnalytics.prototype._bindSessionLifecycle = function () {
+    var self = this;
+    var enterForeground = function () {
+        if (!self.sessionManager) {
+            return;
+        }
+        self.sessionManager.onEnterForeground(_.getCurrentTimeStamp(), self._getSessionTimeout());
+    };
+    if (typeof document !== 'undefined' && ('onvisibilitychange' in document)) {
+        _.addEvent(document, 'visibilitychange', function () {
+            if (!self.sessionManager) {
+                return;
+            }
+            var now = _.getCurrentTimeStamp();
+            if (document.hidden) {
+                self.sessionManager.onEnterBackground(now);
+            } else {
+                self.sessionManager.onEnterForeground(now, self._getSessionTimeout());
+            }
+        });
+    }
+    if (typeof document === 'undefined' || !document.hidden) {
+        enterForeground();
+    }
+};
+
+TDAnalytics.prototype._applySessionId = function (properties) {
+    if (_.isDisableProperties(this._getConfig('disablePresetProperties'), '#session_id')) {
+        return;
+    }
+    if (!this.sessionManager || !properties) {
+        return;
+    }
+    var sessionId = this.sessionManager.onEvent(_.getCurrentTimeStamp(), this._getSessionTimeout());
+    if (sessionId) {
+        properties['#session_id'] = sessionId;
+    }
 };
 
 TDAnalytics.prototype.enableTracking = function (enabled) {
